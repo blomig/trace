@@ -125,18 +125,18 @@
     }
 
     // Placer une pièce
-    function placePiece(x, y) {
-        if (gameOver || !currentPiece || grid[y][x]) return;
-        grid[y][x] = currentPiece;
-        const cell = gridElement.children[y * gridSize + x];
-        drawPiece(cell, currentPiece);
-        new Audio('place.wav').play(); // À remplacer
-        checkPatterns();
-        currentPiece = nextPiece;
-        nextPiece = generatePiece();
-        updatePieces();
-        if (!canPlacePiece()) endGame();
-    }
+function placePiece(x, y) {
+    if (gameOver || !currentPiece || grid[y][x]) return;
+    grid[y][x] = currentPiece;
+    const cell = gridElement.children[y * gridSize + x];
+    drawPiece(cell, currentPiece); // Dessine la pièce avec ses traits
+    new Audio('place.wav').play(); // À remplacer
+    checkPatterns(); // Vérifie les motifs après placement
+    currentPiece = nextPiece;
+    nextPiece = generatePiece();
+    updatePieces();
+    if (!canPlacePiece()) endGame();
+}
 
     // Vérifier les motifs (à implémenter)
     function checkPatterns() {
@@ -144,11 +144,13 @@
     }
 
     // Mettre à jour l’affichage des pièces
-    function updatePieces() {
-        drawPiece(document.getElementById('current-piece'), currentPiece);
-        drawPiece(document.getElementById('next-piece'), nextPiece, 20);
-        document.getElementById('score').textContent = `Score : ${score}`;
-    }
+function updatePieces() {
+    const currentElement = document.getElementById('current-piece');
+    const nextElement = document.getElementById('next-piece');
+    drawPiece(currentElement, currentPiece, cellSize); // Pièce actuelle
+    drawPiece(nextElement, nextPiece, 20); // Pièce suivante
+    document.getElementById('score').textContent = `Score : ${score}`;
+}
 
     // Vérifier si une pièce peut être placée
     function canPlacePiece() {
