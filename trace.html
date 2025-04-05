@@ -130,7 +130,7 @@ function placePiece(x, y) {
     grid[y][x] = currentPiece;
     const cell = gridElement.children[y * gridSize + x];
     drawPiece(cell, currentPiece); // Dessine la pièce avec ses traits
-    new Audio('place.wav').play(); // À remplacer
+    new Audio('place.mp3').play(); // À remplacer
     checkPatterns(); // Vérifie les motifs après placement
     currentPiece = nextPiece;
     nextPiece = generatePiece();
