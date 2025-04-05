@@ -225,17 +225,33 @@ function dfs(x, y, prev, visited, parent, cyclePieces) {
     return false;
 }
 
+function markCycle(start, parent, cyclePieces) {
+    let current = start;
+    while (current && !cyclePieces.has(current)) {
+        cyclePieces.add(current);
+        current = parent.get(current);
+    }
+}
+
 function getNeighbors(x, y, piece) {
     const connections = [];
+    // Définir les 8 directions possibles (orthogonales et diagonales)
+    const dirs = [
+        [0, -1, 'top'], [1, 0, 'right'], [0, 1, 'bottom'], [-1, 0, 'left'],
+        [-1, -1, 'top-left'], [1, -1, 'top-right'], [1, 1, 'bottom-right'], [-1, 1, 'bottom-left']
+    ];
+
+    // Définir les points opposés pour chaque direction
     const opposites = {
         'top': ['bottom', 'bottom-left', 'bottom-right'],
         'bottom': ['top', 'top-left', 'top-right'],
         'left': ['right', 'top-right', 'bottom-right'],
-        'right': ['left', 'top-left', 'bottom-left']
+        'right': ['left', 'top-left', 'bottom-left'],
+        'top-left': ['bottom-right'],
+        'top-right': ['bottom-left'],
+        'bottom-left': ['top-right'],
+        'bottom-right': ['top-left']
     };
-    const dirs = [
-        [0, -1, 'top'], [1, 0, 'right'], [0, 1, 'bottom'], [-1, 0, 'left']
-    ];
 
     console.log(`Checking neighbors for piece at (${x},${y}):`, piece);
     for (const [dx, dy, dir] of dirs) {
@@ -244,8 +260,8 @@ function getNeighbors(x, y, piece) {
         if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
             const neighbor = grid[ny][nx];
             if (neighbor) {
-                const expectedStarts = opposites[dir];
-                const expectedEnds = opposites[dir];
+                const expectedStarts = opposites[dir] || [];
+                const expectedEnds = opposites[dir] || [];
                 console.log(`Neighbor at (${nx},${ny}):`, neighbor, `Direction: ${dir}`);
                 console.log(`Piece end: ${piece.end}, Neighbor start: ${neighbor.start}, Expected starts:`, expectedStarts);
                 console.log(`Piece start: ${piece.start}, Neighbor end: ${neighbor.end}, Expected ends:`, expectedEnds);
@@ -263,7 +279,7 @@ function getNeighbors(x, y, piece) {
     console.log(`Connections for (${x},${y}):`, connections);
     return connections;
 }
-
+       
 function markCycle(start, parent, cyclePieces) {
     let current = start;
     while (current && !cyclePieces.has(current)) {
