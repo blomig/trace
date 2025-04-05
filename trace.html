@@ -58,6 +58,12 @@
             font-size: 16px;
         }
         canvas { display: none; } /* Pour dessiner les traits dynamiquement */
+        .blink {
+    animation: blink 0.5s infinite;
+}
+@keyframes blink {
+    50% { opacity: 0; }
+}
     </style>
 </head>
 <body>
@@ -150,10 +156,112 @@ function placePiece(x, y) {
     if (!canPlacePiece()) endGame();
 }
 
-    // Vérifier les motifs (à implémenter)
-    function checkPatterns() {
-        // Logique à venir
+    // Vérifier les motifs après placement d’une pièce
+function checkPatterns() {
+    const visited = new Set();
+    const parent = new Map();
+    let cycleFound = false;
+    const cyclePieces = new Set();
+
+    // Vérifier chaque case comme point de départ potentiel
+    for (let y = 0; y < gridSize && !cycleFound; y++) {
+        for (let x = 0; x < gridSize && !cycleFound; x++) {
+            if (grid[y][x] && !visited.has(`${x},${y}`)) {
+                cycleFound = dfs(x, y, null, visited, parent, cyclePieces);
+                if (cycleFound) break;
+            }
+        }
     }
+
+    if (cycleFound) {
+        // Clignoter et supprimer les pièces du cycle
+        cyclePieces.forEach(pos => {
+            const [x, y] = pos.split(',').map(Number);
+            const cell = gridElement.children[y * gridSize + x];
+            cell.classList.add('blink');
+        });
+        setTimeout(() => {
+            cyclePieces.forEach(pos => {
+                const [x, y] = pos.split(',').map(Number);
+                grid[y][x] = null;
+                const cell = gridElement.children[y * gridSize + x];
+                cell.innerHTML = '';
+                cell.classList.remove('blink');
+            });
+            score += cyclePieces.size * 10; // Exemple : 10 points par pièce dans le cycle
+            updatePieces(); // Met à jour l’affichage du score
+        }, 500); // Délai pour l’effet de clignotement
+        new Audio('pattern.mp3').play(); // À remplacer par ton fichier son
+    }
+}
+
+// Recherche en profondeur pour détecter un cycle
+function dfs(x, y, prev, visited, parent, cyclePieces) {
+    const key = `${x},${y}`;
+    visited.add(key);
+    parent.set(key, prev);
+
+    const piece = grid[y][x];
+    const neighbors = getNeighbors(x, y, piece);
+
+    for (const [nx, ny, port] of neighbors) {
+        const nKey = `${nx},${ny}`;
+        if (!grid[ny][nx]) continue;
+
+        if (!visited.has(nKey)) {
+            if (dfs(nx, ny, key, visited, parent, cyclePieces)) {
+                if (!cyclePieces.size) markCycle(key, parent, cyclePieces);
+                cyclePieces.add(key);
+                return true;
+            }
+        } else if (nKey !== prev && parent.has(nKey)) {
+            markCycle(key, parent, cyclePieces);
+            cyclePieces.add(key);
+            return true;
+        }
+    }
+    return false;
+}
+
+// Trouver les voisins connectés
+function getNeighbors(x, y, piece) {
+    const connections = [];
+    const opposites = {
+        'top-left': 'bottom-right', 'top': 'bottom', 'top-right': 'bottom-left',
+        'right': 'left', 'bottom-right': 'top-left', 'bottom': 'top',
+        'bottom-left': 'top-right', 'left': 'right'
+    };
+    const dirs = [
+        [0, -1, 'top'], [1, 0, 'right'], [0, 1, 'bottom'], [-1, 0, 'left']
+    ];
+
+    for (const [dx, dy, dir] of dirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+            const neighbor = grid[ny][nx];
+            if (neighbor) {
+                // Vérifier si les ports se connectent
+                if (piece.end === dir && neighbor.start === opposites[dir]) {
+                    connections.push([nx, ny, dir]);
+                }
+                if (piece.start === dir && neighbor.end === opposites[dir]) {
+                    connections.push([nx, ny, dir]);
+                }
+            }
+        }
+    }
+    return connections;
+}
+
+// Marquer les pièces d’un cycle
+function markCycle(start, parent, cyclePieces) {
+    let current = start;
+    while (current && !cyclePieces.has(current)) {
+        cyclePieces.add(current);
+        current = parent.get(current);
+    }
+}
 
     // Mettre à jour l’affichage des pièces
 function updatePieces() {
