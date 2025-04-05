@@ -40,17 +40,18 @@
             gap: 10px;
             margin-top: 10px;
         }
-        #current-piece, #next-piece {
-            width: 40px;
-            height: 40px;
-            background-color: #fff;
-            border: 1px solid #000;
-            position: relative;
-        }
-        #next-piece {
-            width: 20px;
-            height: 20px;
-        }
+        .cell, #current-piece, #next-piece {
+    width: 40px;
+    height: 40px;
+    background-color: #fff;
+    border: 1px solid #000; /* Ajout d’une bordure pour voir les limites */
+    position: relative; /* Pour que le canvas s’aligne bien */
+    overflow: visible;
+}
+#next-piece {
+    width: 20px;
+    height: 20px;
+}
         #hiscores-btn {
             margin-top: 20px;
             padding: 10px 20px;
@@ -97,32 +98,34 @@
         return { start, end };
     }
 
-    // Dessiner une pièce (inchangé)
     function drawPiece(element, piece, size = cellSize) {
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, size, size);
-        ctx.beginPath();
-        const centerX = size / 2;
-        const centerY = size / 2;
-        const positions = {
-            'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
-            'right': [size, centerY], 'bottom-right': [size, size],
-            'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
-        };
-        const [startX, startY] = positions[piece.start];
-        const [endX, endY] = positions[piece.end];
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(centerX, centerY);
-        ctx.lineTo(endX, endY);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        element.innerHTML = '';
-        element.appendChild(canvas);
-    }
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.position = 'absolute'; // Assure que le canvas est bien positionné
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const positions = {
+        'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
+        'right': [size, centerY], 'bottom-right': [size, size],
+        'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
+    };
+    const [startX, startY] = positions[piece.start];
+    const [endX, endY] = positions[piece.end];
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(centerX, centerY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = '#000'; // Noir bien visible
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    element.innerHTML = ''; // Vide l’élément
+    element.appendChild(canvas);
+}
 
     // Placer une pièce
 function placePiece(x, y) {
