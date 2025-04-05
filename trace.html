@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Motifs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            text-align: center;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(10, 40px);
+            grid-gap: 1px;
+            background-color: #000;
+            padding: 1px;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #fff;
+            position: relative;
+        }
+        #score {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        #next-pieces {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #current-piece, #next-piece {
+            width: 40px;
+            height: 40px;
+            background-color: #fff;
+            border: 1px solid #000;
+            position: relative;
+        }
+        #next-piece {
+            width: 20px;
+            height: 20px;
+        }
+        #hiscores-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        canvas { display: none; } /* Pour dessiner les traits dynamiquement */
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="grid"></div>
+        <div id="score">Score : 0</div>
+        <div id="next-pieces">
+            <div id="current-piece"></div>
+            <div id="next-piece"></div>
+        </div>
+        <button id="hiscores-btn">Hiscores</button>
+    </div>
+
+    <script>
+        const gridSize = 10;
+        const cellSize = 40;
+        let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+        let score = 0;
+        let currentPiece = null;
+        let nextPiece = null;
+
+        // Initialisation de la grille
+        const gridElement = document.getElementById('grid');
+        for (let i = 0; i < gridSize * gridSize; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.addEventListener('click', () => placePiece(i % gridSize, Math.floor(i / gridSize)));
+            gridElement.appendChild(cell);
+        }
+
+        // Générer une pièce aléatoire
+        function generatePiece() {
+            const points = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
+            const start = points[Math.floor(Math.random() * 8)];
+            let end = points[Math.floor(Math.random() * 8)];
+            while (end === start) end = points[Math.floor(Math.random() * 8)];
+            return { start, end };
+        }
+
+        // Afficher une pièce dans un élément
+        function drawPiece(element, piece, size = cellSize) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, size, size);
+            ctx.beginPath();
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const positions = {
+                'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
+                'right': [size, centerY], 'bottom-right': [size, size],
+                'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
+            };
+            const [startX, startY] = positions[piece.start];
+            const [endX, endY] = positions[piece.end];
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(centerX, centerY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            element.innerHTML = '';
+            element.appendChild(canvas);
+        }
+
+        // Placer une pièce sur la grille
+        function placePiece(x, y) {
+            if (!grid[y][x] && currentPiece) {
+                grid[y][x] = currentPiece;
+                const cell = gridElement.children[y * gridSize + x];
+                drawPiece(cell, currentPiece);
+                new Audio('place.wav').play(); // À remplacer par un vrai son
+                checkPatterns();
+                currentPiece = nextPiece;
+                nextPiece = generatePiece();
+                updatePieces();
+            }
+        }
+
+        // Vérifier les motifs (simplifié pour l'instant)
+        function checkPatterns() {
+            // Logique de détection de boucle à implémenter
+            // Si boucle détectée : clignoter et supprimer les pièces, augmenter le score
+        }
+
+        // Mettre à jour l'affichage des pièces
+        function updatePieces() {
+            drawPiece(document.getElementById('current-piece'), currentPiece);
+            drawPiece(document.getElementById('next-piece'), nextPiece, 20);
+        }
+
+        // Gestion des hiscores
+        document.getElementById('hiscores-btn').addEventListener('click', () => {
+            fetch('https://ton-serveur-blog.com/api/scores') // Remplace par l’URL de ton API
+                .then(response => response.json())
+                .then(data => alert('Meilleurs scores : ' + JSON.stringify(data.slice(0, 10))));
+        });
+
+        // Sauvegarder le score en fin de partie
+        function saveScore(score, name) {
+            fetch('https://ton-serveur-blog.com/api/scores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, score })
+            });
+        }
+
+        // Démarrer le jeu
+        currentPiece = generatePiece();
+        nextPiece = generatePiece();
+        updatePieces();
+    </script>
+</body>
+</html>
