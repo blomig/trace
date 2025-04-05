@@ -153,17 +153,17 @@ function placePiece(x, y) {
     if (!canPlacePiece()) endGame();
 }
 
-    // Vérifier les motifs après placement d’une pièce
 function checkPatterns() {
     const visited = new Set();
     const parent = new Map();
     let cycleFound = false;
     const cyclePieces = new Set();
 
-    // Vérifier chaque case comme point de départ potentiel
+    console.log('Starting pattern check...');
     for (let y = 0; y < gridSize && !cycleFound; y++) {
         for (let x = 0; x < gridSize && !cycleFound; x++) {
             if (grid[y][x] && !visited.has(`${x},${y}`)) {
+                console.log(`Starting DFS from (${x},${y})`);
                 cycleFound = dfs(x, y, null, visited, parent, cyclePieces);
                 if (cycleFound) break;
             }
@@ -171,7 +171,7 @@ function checkPatterns() {
     }
 
     if (cycleFound) {
-        // Clignoter et supprimer les pièces du cycle
+        console.log('Cycle found! Pieces involved:', cyclePieces);
         cyclePieces.forEach(pos => {
             const [x, y] = pos.split(',').map(Number);
             const cell = gridElement.children[y * gridSize + x];
@@ -185,10 +185,12 @@ function checkPatterns() {
                 cell.innerHTML = '';
                 cell.classList.remove('blink');
             });
-            score += cyclePieces.size * 10; // Exemple : 10 points par pièce dans le cycle
-            updatePieces(); // Met à jour l’affichage du score
-        }, 500); // Délai pour l’effet de clignotement
-        new Audio('pattern.wav').play(); // À remplacer par ton fichier son
+            score += cyclePieces.size * 10;
+            updatePieces();
+        }, 500);
+        new Audio('pattern.wav').play();
+    } else {
+        console.log('No cycle found.');
     }
 }
 
@@ -226,9 +228,10 @@ function dfs(x, y, prev, visited, parent, cyclePieces) {
 function getNeighbors(x, y, piece) {
     const connections = [];
     const opposites = {
-        'top-left': 'bottom-right', 'top': 'bottom', 'top-right': 'bottom-left',
-        'right': 'left', 'bottom-right': 'top-left', 'bottom': 'top',
-        'bottom-left': 'top-right', 'left': 'right'
+        'top': ['bottom', 'bottom-left', 'bottom-right'],
+        'bottom': ['top', 'top-left', 'top-right'],
+        'left': ['right', 'top-right', 'bottom-right'],
+        'right': ['left', 'top-left', 'bottom-left']
     };
     const dirs = [
         [0, -1, 'top'], [1, 0, 'right'], [0, 1, 'bottom'], [-1, 0, 'left']
@@ -241,14 +244,16 @@ function getNeighbors(x, y, piece) {
         if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
             const neighbor = grid[ny][nx];
             if (neighbor) {
+                const expectedStarts = opposites[dir];
+                const expectedEnds = opposites[dir];
                 console.log(`Neighbor at (${nx},${ny}):`, neighbor, `Direction: ${dir}`);
-                console.log(`Piece end: ${piece.end}, Neighbor start: ${neighbor.start}, Expected start: ${opposites[dir]}`);
-                console.log(`Piece start: ${piece.start}, Neighbor end: ${neighbor.end}, Expected end: ${opposites[dir]}`);
-                if (piece.end === dir && neighbor.start === opposites[dir]) {
+                console.log(`Piece end: ${piece.end}, Neighbor start: ${neighbor.start}, Expected starts:`, expectedStarts);
+                console.log(`Piece start: ${piece.start}, Neighbor end: ${neighbor.end}, Expected ends:`, expectedEnds);
+                if (piece.end === dir && expectedStarts.includes(neighbor.start)) {
                     console.log(`Connection found: (${x},${y}) end to (${nx},${ny}) start`);
                     connections.push([nx, ny, dir]);
                 }
-                if (piece.start === dir && neighbor.end === opposites[dir]) {
+                if (piece.start === dir && expectedEnds.includes(neighbor.end)) {
                     console.log(`Connection found: (${x},${y}) start to (${nx},${ny}) end`);
                     connections.push([nx, ny, dir]);
                 }
@@ -258,7 +263,7 @@ function getNeighbors(x, y, piece) {
     console.log(`Connections for (${x},${y}):`, connections);
     return connections;
 }
-// Marquer les pièces d’un cycle
+
 function markCycle(start, parent, cyclePieces) {
     let current = start;
     while (current && !cyclePieces.has(current)) {
