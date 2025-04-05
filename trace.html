@@ -99,6 +99,7 @@
     }
 
     function drawPiece(element, piece, size = cellSize) {
+     console.log('Drawing piece:', piece, 'in element:', element, 'with size:', size);
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
