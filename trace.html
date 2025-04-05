@@ -99,13 +99,20 @@
     }
 
     function drawPiece(element, piece, size = cellSize) {
-     console.log('Drawing piece:', piece, 'in element:', element, 'with size:', size);
+    if (!piece || !piece.start || !piece.end) {
+        console.error('Invalid piece:', piece);
+        return;
+    }
+    console.log('Drawing piece:', piece, 'in element:', element, 'with size:', size);
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
-    canvas.style.position = 'absolute'; // Assure que le canvas est bien positionné
+    canvas.style.position = 'absolute';
     canvas.style.top = '0';
     canvas.style.left = '0';
+    canvas.style.zIndex = '1';
+    canvas.style.border = '1px solid red'; // Bordure rouge pour voir le canvas
+    canvas.style.display = 'block'; // Forcer l’affichage
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, size, size);
     ctx.beginPath();
@@ -118,16 +125,17 @@
     };
     const [startX, startY] = positions[piece.start];
     const [endX, endY] = positions[piece.end];
+    console.log('Start:', startX, startY, 'Center:', centerX, centerY, 'End:', endX, endY);
     ctx.moveTo(startX, startY);
     ctx.lineTo(centerX, centerY);
     ctx.lineTo(endX, endY);
-    ctx.strokeStyle = '#000'; // Noir bien visible
+    ctx.strokeStyle = '#000';
     ctx.lineWidth = 2;
     ctx.stroke();
     element.innerHTML = ''; // Vide l’élément
     element.appendChild(canvas);
+    console.log('Canvas added to element:', element, 'Canvas visible:', canvas.offsetWidth > 0);
 }
-
     // Placer une pièce
 function placePiece(x, y) {
     if (gameOver || !currentPiece || grid[y][x]) return;
