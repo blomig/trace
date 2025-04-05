@@ -70,105 +70,151 @@
         <button id="hiscores-btn">Hiscores</button>
     </div>
 
-    <script>
-        const gridSize = 10;
-        const cellSize = 40;
-        let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-        let score = 0;
-        let currentPiece = null;
-        let nextPiece = null;
+   <script>
+    const gridSize = 10;
+    const cellSize = 40;
+    let grid = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+    let score = 0;
+    let currentPiece = null;
+    let nextPiece = null;
+    let gameOver = false;
 
-        // Initialisation de la grille
-        const gridElement = document.getElementById('grid');
-        for (let i = 0; i < gridSize * gridSize; i++) {
-            const cell = document.createElement('div');
-            cell.classList.add('cell');
-            cell.addEventListener('click', () => placePiece(i % gridSize, Math.floor(i / gridSize)));
-            gridElement.appendChild(cell);
-        }
+    // Initialisation de la grille (inchangée)
+    const gridElement = document.getElementById('grid');
+    for (let i = 0; i < gridSize * gridSize; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.addEventListener('click', () => placePiece(i % gridSize, Math.floor(i / gridSize)));
+        gridElement.appendChild(cell);
+    }
 
-        // Générer une pièce aléatoire
-        function generatePiece() {
-            const points = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
-            const start = points[Math.floor(Math.random() * 8)];
-            let end = points[Math.floor(Math.random() * 8)];
-            while (end === start) end = points[Math.floor(Math.random() * 8)];
-            return { start, end };
-        }
+    // Générer une pièce (inchangé)
+    function generatePiece() {
+        const points = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
+        const start = points[Math.floor(Math.random() * 8)];
+        let end = points[Math.floor(Math.random() * 8)];
+        while (end === start) end = points[Math.floor(Math.random() * 8)];
+        return { start, end };
+    }
 
-        // Afficher une pièce dans un élément
-        function drawPiece(element, piece, size = cellSize) {
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, size, size);
-            ctx.beginPath();
-            const centerX = size / 2;
-            const centerY = size / 2;
-            const positions = {
-                'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
-                'right': [size, centerY], 'bottom-right': [size, size],
-                'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
-            };
-            const [startX, startY] = positions[piece.start];
-            const [endX, endY] = positions[piece.end];
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(centerX, centerY);
-            ctx.lineTo(endX, endY);
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            element.innerHTML = '';
-            element.appendChild(canvas);
-        }
+    // Dessiner une pièce (inchangé)
+    function drawPiece(element, piece, size = cellSize) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, size, size);
+        ctx.beginPath();
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const positions = {
+            'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
+            'right': [size, centerY], 'bottom-right': [size, size],
+            'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
+        };
+        const [startX, startY] = positions[piece.start];
+        const [endX, endY] = positions[piece.end];
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(centerX, centerY);
+        ctx.lineTo(endX, endY);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        element.innerHTML = '';
+        element.appendChild(canvas);
+    }
 
-        // Placer une pièce sur la grille
-        function placePiece(x, y) {
-            if (!grid[y][x] && currentPiece) {
-                grid[y][x] = currentPiece;
-                const cell = gridElement.children[y * gridSize + x];
-                drawPiece(cell, currentPiece);
-                new Audio('place.wav').play(); // À remplacer par un vrai son
-                checkPatterns();
-                currentPiece = nextPiece;
-                nextPiece = generatePiece();
-                updatePieces();
-            }
-        }
-
-        // Vérifier les motifs (simplifié pour l'instant)
-        function checkPatterns() {
-            // Logique de détection de boucle à implémenter
-            // Si boucle détectée : clignoter et supprimer les pièces, augmenter le score
-        }
-
-        // Mettre à jour l'affichage des pièces
-        function updatePieces() {
-            drawPiece(document.getElementById('current-piece'), currentPiece);
-            drawPiece(document.getElementById('next-piece'), nextPiece, 20);
-        }
-
-        // Gestion des hiscores
-        document.getElementById('hiscores-btn').addEventListener('click', () => {
-            fetch('https://ton-serveur-blog.com/api/scores') // Remplace par l’URL de ton API
-                .then(response => response.json())
-                .then(data => alert('Meilleurs scores : ' + JSON.stringify(data.slice(0, 10))));
-        });
-
-        // Sauvegarder le score en fin de partie
-        function saveScore(score, name) {
-            fetch('https://ton-serveur-blog.com/api/scores', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, score })
-            });
-        }
-
-        // Démarrer le jeu
-        currentPiece = generatePiece();
+    // Placer une pièce
+    function placePiece(x, y) {
+        if (gameOver || !currentPiece || grid[y][x]) return;
+        grid[y][x] = currentPiece;
+        const cell = gridElement.children[y * gridSize + x];
+        drawPiece(cell, currentPiece);
+        new Audio('place.wav').play(); // À remplacer
+        checkPatterns();
+        currentPiece = nextPiece;
         nextPiece = generatePiece();
         updatePieces();
-    </script>
+        if (!canPlacePiece()) endGame();
+    }
+
+    // Vérifier les motifs (à implémenter)
+    function checkPatterns() {
+        // Logique à venir
+    }
+
+    // Mettre à jour l’affichage des pièces
+    function updatePieces() {
+        drawPiece(document.getElementById('current-piece'), currentPiece);
+        drawPiece(document.getElementById('next-piece'), nextPiece, 20);
+        document.getElementById('score').textContent = `Score : ${score}`;
+    }
+
+    // Vérifier si une pièce peut être placée
+    function canPlacePiece() {
+        return grid.some(row => row.some(cell => !cell));
+    }
+
+    // Fin de partie
+    function endGame() {
+        gameOver = true;
+        addHighScore(score);
+    }
+
+    // Charger les scores
+    function loadHighScores() {
+        return fetch('https://blomig.com/api/trace/scores.php?v=' + Date.now(), {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-cache'
+        })
+        .then(response => response.ok ? response.json() : Promise.reject(`HTTP error! status: ${response.status}`))
+        .then(highScores => {
+            while (highScores.length < 10) highScores.push(["AAAAA", 0]);
+            return highScores;
+        })
+        .catch(() => [["AAAAA", 0], ["BBBBB", 0], ["CCCCC", 0], ["DDDDD", 0], ["EEEEE", 0], ["FFFFF", 0], ["GGGGG", 0], ["HHHHH", 0], ["IIIII", 0], ["JJJJJ", 0]]);
+    }
+
+    // Sauvegarder les scores
+    function saveHighScores(newScore) {
+        return fetch('https://blomig.com/api/trace/scores.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newScore)
+        })
+        .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(`HTTP error! status: ${response.status}, message: ${err.error}`)))
+        .catch(error => { console.error("Erreur sauvegarde:", error); throw error; });
+    }
+
+    // Ajouter un score
+    function addHighScore(score) {
+        let name = prompt("Partie terminée ! Entrez vos initiales (5 lettres max) :", "AAAAA");
+        if (name) {
+            name = name.slice(0, 5).padEnd(5, " ").toUpperCase();
+            loadHighScores().then(highScores => {
+                highScores.push([name, score]);
+                highScores.sort((a, b) => b[1] - a[1]);
+                highScores = highScores.slice(0, 10);
+                saveHighScores({ name, score })
+                    .then(() => alert("Score sauvegardé !"))
+                    .catch(() => alert("Erreur lors de la sauvegarde du score."));
+            });
+        }
+    }
+
+    // Afficher les hiscores
+    document.getElementById('hiscores-btn').addEventListener('click', () => {
+        loadHighScores().then(highScores => {
+            const scoresText = highScores.map(([name, score], i) => `${i + 1}. ${name} - ${score}`).join('\n');
+            alert('Meilleurs scores :\n' + scoresText);
+        });
+    });
+
+    // Démarrer le jeu
+    currentPiece = generatePiece();
+    nextPiece = generatePiece();
+    updatePieces();
+</script>
 </body>
 </html>
