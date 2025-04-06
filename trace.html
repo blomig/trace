@@ -271,34 +271,28 @@ function checkPatterns(startX, startY) {
     };
 
     // Construire le graphe des connexions
-    const graph = {};
-    const pieceToPoints = new Map(); // Map pour associer chaque pièce à ses points
-    const pointToPieces = new Map(); // Map pour associer chaque point à ses pièces
+    const graph = new Map(); // Graphe des pièces et leurs connexions
+    const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
+    const piecePoints = new Map(); // Map pour associer chaque pièce à ses points
 
     // Initialiser le graphe
-    const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
-    pointsList.forEach(point => {
-        graph[point] = new Set();
-        pointToPieces.set(point, new Set());
-    });
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            if (!grid[y][x]) continue;
+            const pieceKey = `${x},${y}`;
+            graph.set(pieceKey, new Set());
+            piecePoints.set(pieceKey, new Set([grid[y][x].start, grid[y][x].end]));
+        }
+    }
 
-    // Ajouter les connexions intra-pièce et inter-pièce
+    // Ajouter les connexions inter-pièce
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
             if (!grid[y][x]) continue;
             const piece = grid[y][x];
             const pieceKey = `${x},${y}`;
+            const piecePointsSet = piecePoints.get(pieceKey);
 
-            // Ajouter les points de la pièce
-            pieceToPoints.set(pieceKey, [piece.start, piece.end]);
-            pointToPieces.get(piece.start).add(pieceKey);
-            pointToPieces.get(piece.end).add(pieceKey);
-
-            // Ajouter les connexions intra-pièce (bidirectionnelles, car start et end sont neutres)
-            graph[piece.start].add(piece.end);
-            graph[piece.end].add(piece.start);
-
-            // Ajouter les connexions inter-pièce
             pointsList.forEach(point => {
                 const dirList = directions[point] || [];
                 dirList.forEach(([dx, dy]) => {
@@ -306,11 +300,12 @@ function checkPatterns(startX, startY) {
                     const ny = y + dy;
                     if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
                         const neighborPiece = grid[ny][nx];
-                        const neighborPoints = [neighborPiece.start, neighborPiece.end];
+                        const neighborKey = `${nx},${ny}`;
+                        const neighborPoints = piecePoints.get(neighborKey);
                         const oppositePoint = opposites[point];
-                        if (neighborPoints.includes(oppositePoint)) {
-                            graph[point].add(oppositePoint);
-                            graph[oppositePoint].add(point);
+                        if (piecePointsSet.has(point) && neighborPoints.has(oppositePoint)) {
+                            graph.get(pieceKey).add(neighborKey);
+                            graph.get(neighborKey).add(pieceKey);
                         }
                     }
                 });
@@ -318,25 +313,54 @@ function checkPatterns(startX, startY) {
         }
     }
 
-    // Recherche d'un cycle fermé dans le graphe
+    // Recherche d'un cycle fermé dans le graphe des pièces
     function findCycle() {
         const visited = new Set();
         const parent = new Map();
         const path = [];
+        const pointsPath = []; // Suivre les points pour vérifier la boucle des traits
 
-        function dfs(node, startNode) {
+        function dfs(node, startNode, prevPoint) {
             visited.add(node);
             path.push(node);
 
-            for (let neighbor of graph[node]) {
+            const piece = grid[node.split(',')[1]][node.split(',')[0]];
+            const piecePointsSet = piecePoints.get(node);
+            let entryPoint = prevPoint;
+
+            for (let neighbor of graph.get(node)) {
                 if (!visited.has(neighbor)) {
+                    const neighborPiece = grid[neighbor.split(',')[1]][neighbor.split(',')[0]];
+                    const neighborPoints = piecePoints.get(neighbor);
+                    let connectionPoint = null;
+
+                    // Trouver le point de connexion entre les deux pièces
+                    for (let point of piecePointsSet) {
+                        const oppositePoint = opposites[point];
+                        if (neighborPoints.has(oppositePoint)) {
+                            connectionPoint = point;
+                            break;
+                        }
+                    }
+
+                    if (!connectionPoint) continue;
+
+                    pointsPath.push(connectionPoint);
                     parent.set(neighbor, node);
-                    if (dfs(neighbor, startNode)) {
+                    if (dfs(neighbor, startNode, opposites[connectionPoint])) {
                         return true;
                     }
+                    pointsPath.pop();
                 } else if (neighbor === startNode && path.length > 2) { // Cycle fermé trouvé
-                    path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
-                    return true;
+                    // Vérifier que les traits forment une boucle continue
+                    const startPiece = grid[startNode.split(',')[1]][startNode.split(',')[0]];
+                    const startPoints = piecePoints.get(startNode);
+                    const lastPoint = pointsPath[pointsPath.length - 1];
+                    const firstPoint = pointsPath[0];
+                    if (startPoints.has(opposites[lastPoint]) && opposites[firstPoint] === prevPoint) {
+                        path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
+                        return true;
+                    }
                 }
             }
 
@@ -344,16 +368,21 @@ function checkPatterns(startX, startY) {
             return false;
         }
 
-        // Essayer de trouver un cycle à partir de chaque point
-        for (let startNode of pointsList) {
-            if (pointToPieces.get(startNode).size > 0) { // Commencer uniquement à partir des points utilisés
-                visited.clear();
-                path.length = 0;
-                parent.clear();
-                if (dfs(startNode, startNode)) {
-                    return path;
-                }
+        // Essayer de trouver un cycle à partir de chaque pièce
+        const startPieceKey = `${startX},${startY}`;
+        visited.clear();
+        path.length = 0;
+        pointsPath.length = 0;
+        parent.clear();
+
+        const startPiece = grid[startY][startX];
+        const startPoints = piecePoints.get(startPieceKey);
+        for (let startPoint of startPoints) {
+            pointsPath.push(startPoint);
+            if (dfs(startPieceKey, startPieceKey, startPoint)) {
+                return path;
             }
+            pointsPath.pop();
         }
 
         return null;
@@ -367,19 +396,8 @@ function checkPatterns(startX, startY) {
 
     console.log("Cycle found:", cycle);
 
-    // Extraire les pièces impliquées dans le cycle
-    const piecesInCycle = new Set();
-    for (let i = 0; i < cycle.length - 1; i++) {
-        const point1 = cycle[i];
-        const point2 = cycle[i + 1];
-        const commonPieces = new Set([...pointToPieces.get(point1)].filter(p => pointToPieces.get(point2).has(p)));
-        for (let pieceKey of commonPieces) {
-            piecesInCycle.add(pieceKey);
-        }
-    }
-
     // Convertir les pièces en coordonnées pour animatePattern
-    const path = Array.from(piecesInCycle).map(key => {
+    const path = cycle.slice(0, -1).map(key => { // Exclure la dernière entrée (répétition de la première)
         const [x, y] = key.split(',').map(Number);
         return [x, y];
     });
