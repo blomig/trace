@@ -239,6 +239,7 @@
         // Nouvelle méthode de détection des motifs
        // Nouvelle méthode de détection des motifs
 // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     const piece = grid[startY][startX];
     const directions = {
@@ -261,6 +262,35 @@ function checkPatterns(startX, startY) {
         'bottom-left': [['top-right'], ['top-right', 'top'], ['bottom-right', 'right']],
         'left': [['right']]
     };
+
+    // Fonction pour vérifier si un cycle forme un vrai motif fermé
+    function isValidClosedPattern(path) {
+        if (path.length < 2) return false; // Un cycle doit avoir au moins 2 pièces
+
+        // Vérifier que les traits forment une boucle continue
+        const points = [];
+        for (let i = 0; i < path.length; i++) {
+            const [x, y] = path[i];
+            const piece = grid[y][x];
+            const nextPiece = grid[path[(i + 1) % path.length][1]][path[(i + 1) % path.length][0]];
+
+            // Ajouter les points de départ et d'arrivée au chemin
+            points.push(piece.start);
+            points.push(piece.end);
+
+            // Vérifier la connexion entre cette pièce et la suivante
+            const currentDir = i % 2 === 0 ? piece.end : piece.start;
+            const nextDir = i % 2 === 0 ? nextPiece.start : nextPiece.end;
+            const expectedNextDir = opposites[currentDir][0][0]; // Prendre la première correspondance
+            if (!nextDir || !expectedNextDir || !opposites[currentDir][0].includes(nextDir)) {
+                return false; // Les traits ne se connectent pas correctement
+            }
+        }
+
+        // Vérifier que les points forment une boucle cohérente
+        // Un losange à 2 pièces aura 4 points distincts qui se connectent en boucle
+        return points.length >= 4; // Un losange à 2 pièces a 4 points, un triangle à 3 pièces en a 6, etc.
+    }
 
     // Fonction pour explorer un chemin
     function explorePath(startX, startY, initialDir) {
@@ -305,11 +335,10 @@ function checkPatterns(startX, startY) {
 
             // Vérifier si on boucle
             if (currentX === startX && currentY === startY) {
-                // Vérifier que le cycle implique au moins 3 pièces pour éviter les faux positifs
-                if (path.length >= 3) {
+                if (isValidClosedPattern(path)) {
                     return path; // Motif détecté
                 }
-                break; // Cycle à 2 pièces non valide
+                break; // Cycle non valide
             }
 
             if (visited.has(`${currentX},${currentY}`)) break; // Cycle non fermé
@@ -351,6 +380,15 @@ function checkPatterns(startX, startY) {
         }
     }
 
+    // Explorer à partir de end
+    for (const endNeighbor of endPaths) {
+        const path = explorePath(endNeighbor.x, endNeighbor.y, piece.end);
+        if (path) {
+            animatePattern(path);
+            return;
+        }
+    }
+}
     // Explorer à partir de end
     for (const endNeighbor of endPaths) {
         const path = explorePath(endNeighbor.x, endNeighbor.y, piece.end);
