@@ -281,87 +281,73 @@ function checkPatterns(startX, startY) {
         }
     }
 
-    // Recherche d'un cycle fermé en suivant les traits
+    // Construire le graphe des pièces adjacentes
+    const graph = new Map();
+    for (let i = 0; i < pieces.length; i++) {
+        const piece = pieces[i];
+        const pieceKey = `${piece.x},${piece.y}`;
+        graph.set(pieceKey, new Set());
+    }
+
+    // Ajouter les connexions inter-pièce
+    for (let i = 0; i < pieces.length; i++) {
+        const piece = pieces[i];
+        const pieceKey = `${piece.x},${piece.y}`;
+        const piecePoints = new Set([piece.start, piece.end]);
+
+        pointsList.forEach(point => {
+            const dirList = directions[point] || [];
+            dirList.forEach(([dx, dy], idx) => {
+                const nx = piece.x + dx;
+                const ny = piece.y + dy;
+                if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
+                    const neighborPiece = grid[ny][nx];
+                    const neighborKey = `${nx},${ny}`;
+                    const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
+                    const oppositePoints = opposites[point] || {};
+                    const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
+                    if (oppositePoint && piecePoints.has(point) && neighborPoints.has(oppositePoint)) {
+                        graph.get(pieceKey).add(neighborKey);
+                        graph.get(neighborKey).add(pieceKey);
+                    }
+                }
+            });
+        });
+    }
+
+    // Recherche d'un cycle fermé dans le graphe des pièces
     function findCycle() {
         const visited = new Set();
         const parent = new Map();
         const path = [];
-        const pointsPath = [];
 
-        function dfs(pieceIdx, startIdx, prevPoint) {
-            const piece = pieces[pieceIdx];
-            const pieceKey = `${piece.x},${piece.y}`;
-            visited.add(pieceKey);
-            path.push(pieceKey);
+        function dfs(node, startNode) {
+            visited.add(node);
+            path.push(node);
 
-            const piecePoints = [piece.start, piece.end];
-            let entryPoint = prevPoint;
-
-            // Explorer les pièces voisines
-            pointsList.forEach(point => {
-                const dirList = directions[point] || [];
-                dirList.forEach(([dx, dy], idx) => {
-                    const nx = piece.x + dx;
-                    const ny = piece.y + dy;
-                    if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
-                        const neighborKey = `${nx},${ny}`;
-                        if (visited.has(neighborKey)) return;
-
-                        const neighborPiece = grid[ny][nx];
-                        const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
-                        const oppositePoints = opposites[point] || {};
-                        const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
-                        if (oppositePoint && (piece.start === point || piece.end === point) && neighborPoints.has(oppositePoint)) {
-                            const neighborIdx = pieces.findIndex(p => p.x === nx && p.y === ny);
-                            const currentPoint = (piece.start === point) ? piece.start : piece.end;
-                            const nextPoint = oppositePoint;
-                            pointsPath.push(currentPoint);
-
-                            parent.set(neighborKey, pieceKey);
-                            if (dfs(neighborIdx, startIdx, nextPoint)) {
-                                return true;
-                            }
-
-                            pointsPath.pop();
-                        }
-                    }
-                });
-            });
-
-            if (path.length > 2) {
-                const startPiece = pieces[startIdx];
-                const startKey = `${startPiece.x},${startPiece.y}`;
-                if (pieceKey === startKey) {
-                    const startPoints = new Set([startPiece.start, startPiece.end]);
-                    const lastPoint = pointsPath[pointsPath.length - 1];
-                    const firstPoint = pointsPath[0];
-                    const oppositePoints = opposites[lastPoint] || {};
-                    let connectionPoint = null;
-                    pointsList.forEach(p => {
-                        const oppositePoint = oppositePoints[p === lastPoint ? (directions[p][0] ? 'diagonal' : (directions[p][1] ? 'up' : 'down')) : (p === 'right' || p === 'left' ? 'right' : 'left')];
-                        if (oppositePoint && startPoints.has(oppositePoint) && oppositePoint === firstPoint) {
-                            connectionPoint = oppositePoint;
-                        }
-                    });
-                    if (connectionPoint) {
-                        path.push(neighborKey); // Ajouter le nœud de départ pour fermer le cycle
+            for (let neighbor of graph.get(node)) {
+                if (!visited.has(neighbor)) {
+                    parent.set(neighbor, node);
+                    if (dfs(neighbor, startNode)) {
                         return true;
                     }
+                } else if (neighbor === startNode && path.length > 2) { // Cycle fermé trouvé
+                    path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
+                    return true;
                 }
             }
 
-            visited.delete(pieceKey);
             path.pop();
+            visited.delete(node);
             return false;
         }
 
         // Essayer de trouver un cycle à partir de chaque pièce
-        const startIdx = pieces.findIndex(p => p.x === startX && p.y === startY);
+        const startPieceKey = `${startX},${startY}`;
         visited.clear();
         path.length = 0;
-        pointsPath.length = 0;
         parent.clear();
-        if (dfs(startIdx, startIdx, null)) {
+        if (dfs(startPieceKey, startPieceKey)) {
             return path;
         }
 
