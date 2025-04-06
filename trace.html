@@ -238,6 +238,7 @@
         // Nouvelle méthode de détection des motifs
         // Nouvelle méthode de détection des motifs
        // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     const piece = grid[startY][startX];
     const directions = {
@@ -304,7 +305,11 @@ function checkPatterns(startX, startY) {
 
             // Vérifier si on boucle
             if (currentX === startX && currentY === startY) {
-                return path; // Motif détecté
+                // Vérifier que le cycle implique au moins 3 pièces pour éviter les faux positifs
+                if (path.length >= 3) {
+                    return path; // Motif détecté
+                }
+                break; // Cycle à 2 pièces non valide
             }
 
             if (visited.has(`${currentX},${currentY}`)) break; // Cycle non fermé
@@ -354,8 +359,7 @@ function checkPatterns(startX, startY) {
             return;
         }
     }
-}
-        
+}        
         // Animer le motif détecté
         function animatePattern(path) {
     path.forEach(([x, y]) => {
