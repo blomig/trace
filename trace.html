@@ -25,11 +25,12 @@
             padding: 1px;
         }
         .cell {
-            width: 40px;
-            height: 40px;
-            background-color: #fff !important; /* Force le fond blanc */
-            position: relative;
-        }
+    width: 40px;
+    height: 40px;
+    background-color: #fff !important;
+    position: relative;
+    opacity: 1; /* Valeur par défaut */
+}
         .error {
             animation: error 0.5s;
         }
@@ -121,36 +122,36 @@
 
         // Dessiner une pièce dans un élément
         function drawPiece(element, piece, size = cellSize, color = '#000') {
-            if (!piece || !piece.start || !piece.end) return;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            canvas.style.position = 'absolute';
-            canvas.style.top = '0';
-            canvas.style.left = '0';
-            canvas.style.zIndex = '1';
-            canvas.style.backgroundColor = 'transparent'; // Assure que le canvas est transparent
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, size, size);
-            ctx.beginPath();
-            const centerX = size / 2;
-            const centerY = size / 2;
-            const positions = {
-                'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
-                'right': [size, centerY], 'bottom-right': [size, size],
-                'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
-            };
-            const [startX, startY] = positions[piece.start];
-            const [endX, endY] = positions[piece.end];
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(centerX, centerY);
-            ctx.lineTo(endX, endY);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            element.innerHTML = '';
-            element.appendChild(canvas);
-        }
+    if (!piece || !piece.start || !piece.end) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.zIndex = '1';
+    canvas.style.backgroundColor = 'transparent';
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const positions = {
+        'top-left': [0, 0], 'top': [centerX, 0], 'top-right': [size, 0],
+        'right': [size, centerY], 'bottom-right': [size, size],
+        'bottom': [centerX, size], 'bottom-left': [0, size], 'left': [0, centerY]
+    };
+    const [startX, startY] = positions[piece.start];
+    const [endX, endY] = positions[piece.end];
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(centerX, centerY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    element.innerHTML = '';
+    element.appendChild(canvas);
+}
 
         // Initialiser les 5 pièces disponibles
         function initializePieces() {
@@ -307,36 +308,38 @@
 
         // Animer le motif détecté
         function animatePattern(path) {
-            path.forEach(([x, y]) => {
-                const cell = gridElement.children[y * gridSize + x];
-                cell.classList.add('fade-out');
-                const piece = grid[y][x];
-                const highlightCanvas = document.createElement('canvas');
-                highlightCanvas.width = cellSize;
-                highlightCanvas.height = cellSize;
-                highlightCanvas.style.position = 'absolute';
-                highlightCanvas.style.top = '0';
-                highlightCanvas.style.left = '0';
-                highlightCanvas.style.zIndex = '2';
-                highlightCanvas.classList.add('highlight');
-                drawPiece(highlightCanvas, piece, cellSize, 'red');
-                cell.appendChild(highlightCanvas);
-            });
+    path.forEach(([x, y]) => {
+        const cell = gridElement.children[y * gridSize + x];
+        cell.classList.add('fade-out');
+        const piece = grid[y][x];
+        const highlightCanvas = document.createElement('canvas');
+        highlightCanvas.width = cellSize;
+        highlightCanvas.height = cellSize;
+        highlightCanvas.style.position = 'absolute';
+        highlightCanvas.style.top = '0';
+        highlightCanvas.style.left = '0';
+        highlightCanvas.style.zIndex = '2';
+        highlightCanvas.classList.add('highlight');
+        drawPiece(highlightCanvas, piece, cellSize, 'red');
+        cell.appendChild(highlightCanvas);
+    });
 
-            setTimeout(() => {
-                path.forEach(([x, y]) => {
-                    grid[y][x] = null;
-                    const cell = gridElement.children[y * gridSize + x];
-                    cell.innerHTML = ''; // Vide la cellule
-                    cell.style.backgroundColor = '#fff'; // Restaure le fond blanc
-                });
-                const points = path.length + Math.floor(path.length / 5) * 5;
-                score += points;
-                updatePieces();
-            }, 1000);
+    setTimeout(() => {
+        path.forEach(([x, y]) => {
+            grid[y][x] = null;
+            const cell = gridElement.children[y * gridSize + x];
+            cell.innerHTML = ''; // Vide la cellule
+            cell.classList.remove('fade-out', 'highlight'); // Supprime les classes d’animation
+            cell.style.backgroundColor = '#fff'; // Restaure le fond blanc
+            cell.style.opacity = '1'; // Restaure l’opacité
+        });
+        const points = path.length + Math.floor(path.length / 5) * 5;
+        score += points;
+        updatePieces();
+    }, 1000);
 
-            new Audio('pattern.wav').play();
-        }
+    new Audio('pattern.wav').play();
+}
 
         // Fin de partie
         function endGame() {
