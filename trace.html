@@ -241,6 +241,7 @@
 
        // Nouvelle méthode de détection des motifs
 // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -297,7 +298,7 @@ function checkPatterns(startX, startY) {
             }
         }
 
-        // Ajouter le dernier point pour boucler
+        // Ajouter le premier point pour boucler
         points.push(points[0]);
 
         // Vérifier que les points forment une boucle continue
@@ -329,6 +330,7 @@ function checkPatterns(startX, startY) {
             const currentPiece = grid[currentY][currentX];
             let nextDir;
 
+            // Déterminer la direction suivante
             const possibleDirs = [currentPiece.start, currentPiece.end].filter(dir => dir !== currentDir);
             console.log(`Possible directions from ${currentX},${currentY}:`, possibleDirs);
             nextDir = possibleDirs.find(dir => {
