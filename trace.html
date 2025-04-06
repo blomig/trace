@@ -206,29 +206,33 @@
         }
 
         // Placer une pièce sur la grille
-        function placePiece(x, y, pieceIndex) {
-            if (gameOver || pieceIndex === null || grid[y][x]) {
-                if (grid[y][x]) {
-                    const cell = gridElement.children[y * gridSize + x];
-                    cell.classList.add('error');
-                }
-                return;
-            }
-            const piece = availablePieces[pieceIndex];
-            grid[y][x] = piece;
+       function placePiece(x, y, pieceIndex) {
+    if (gameOver || pieceIndex === null || grid[y][x]) {
+        if (grid[y][x]) {
             const cell = gridElement.children[y * gridSize + x];
-            drawPiece(cell, piece);
-            new Audio('place.mp3').play();
-            availablePieces[pieceIndex] = null;
-            selectedPieceIndex = null;
-            checkPatterns(x, y);
-            if (availablePieces.every(p => p === null)) {
-                initializePieces();
-            } else {
-                updatePieces();
-            }
-            if (!canPlacePiece()) endGame();
+            cell.classList.add('error');
         }
+        return;
+    }
+    const piece = availablePieces[pieceIndex];
+    grid[y][x] = piece;
+    const cell = gridElement.children[y * gridSize + x];
+    drawPiece(cell, piece);
+    new Audio('place.mp3').play();
+    availablePieces[pieceIndex] = null;
+    selectedPieceIndex = null;
+    try {
+        checkPatterns(x, y);
+    } catch (e) {
+        console.error("Error in checkPatterns:", e);
+    }
+    if (availablePieces.every(p => p === null)) {
+        initializePieces();
+    } else {
+        updatePieces();
+    }
+    if (!canPlacePiece()) endGame();
+}
 
         // Vérifier si une pièce peut être placée
         function canPlacePiece() {
@@ -236,12 +240,15 @@
         }
 
         // Nouvelle méthode de détection des motifs
-        // Nouvelle méthode de détection des motifs
-       // Nouvelle méthode de détection des motifs
-// Nouvelle méthode de détection des motifs
-// Nouvelle méthode de détection des motifs
+  // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
+    console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
+    if (!piece) {
+        console.error("No piece found at", startX, startY);
+        return;
+    }
+
     const directions = {
         'top-left': [[-1, -1], [0, -1], [-1, 0]], // Diagonale, haut, gauche
         'top': [[0, -1]], // Haut
@@ -281,19 +288,21 @@ function checkPatterns(startX, startY) {
             // Vérifier la connexion entre cette pièce et la suivante
             const currentDir = i % 2 === 0 ? piece.end : piece.start;
             const nextDir = i % 2 === 0 ? nextPiece.start : nextPiece.end;
-            const expectedNextDir = opposites[currentDir][0][0]; // Prendre la première correspondance
-            if (!nextDir || !expectedNextDir || !opposites[currentDir][0].includes(nextDir)) {
+            const expectedNextDir = opposites[currentDir] && opposites[currentDir][0] ? opposites[currentDir][0][0] : null;
+            if (!nextDir || !expectedNextDir || !opposites[currentDir] || !opposites[currentDir][0].includes(nextDir)) {
+                console.log(`Invalid connection at step ${i}: ${currentDir} → ${nextDir}, expected ${expectedNextDir}`);
                 return false; // Les traits ne se connectent pas correctement
             }
         }
 
         // Vérifier que les points forment une boucle cohérente
-        // Un losange à 2 pièces aura 4 points distincts qui se connectent en boucle
+        console.log("Points in cycle:", points);
         return points.length >= 4; // Un losange à 2 pièces a 4 points, un triangle à 3 pièces en a 6, etc.
     }
 
     // Fonction pour explorer un chemin
     function explorePath(startX, startY, initialDir) {
+        console.log(`Exploring path from ${startX},${startY} with initialDir=${initialDir}`);
         let currentX = startX;
         let currentY = startY;
         let currentDir = initialDir;
@@ -307,27 +316,36 @@ function checkPatterns(startX, startY) {
 
             // Déterminer la direction suivante
             const possibleDirs = [currentPiece.start, currentPiece.end].filter(dir => dir !== currentDir);
+            console.log(`Possible directions from ${currentX},${currentY}:`, possibleDirs);
             nextDir = possibleDirs.find(dir => {
                 const nextNeighbors = directions[dir].map(([dx, dy], idx) => {
                     const nx = currentX + dx;
                     const ny = currentY + dy;
                     const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
-                    return { x: nx, y: ny, valid, expectedStarts: opposites[dir][idx], dir };
+                    const expectedStarts = opposites[dir] && opposites[dir][idx] ? opposites[dir][idx] : [];
+                    return { x: nx, y: ny, valid, expectedStarts, dir };
                 });
                 return nextNeighbors.some(n => n.valid && grid[n.y] && grid[n.y][n.x] && (n.expectedStarts.includes(grid[n.y][n.x].start) || n.expectedStarts.includes(grid[n.y][n.x].end)));
             });
 
-            if (!nextDir) break; // Pas de direction suivante
+            if (!nextDir) {
+                console.log(`No next direction found from ${currentX},${currentY}`);
+                break; // Pas de direction suivante
+            }
 
             const nextNeighbors = directions[nextDir].map(([dx, dy], idx) => {
                 const nx = currentX + dx;
                 const ny = currentY + dy;
                 const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
-                return { x: nx, y: ny, valid, expectedStarts: opposites[nextDir][idx], dir: nextDir };
+                const expectedStarts = opposites[nextDir] && opposites[nextDir][idx] ? opposites[nextDir][idx] : [];
+                return { x: nx, y: ny, valid, expectedStarts, dir: nextDir };
             });
 
             const nextNeighbor = nextNeighbors.find(n => n.valid && grid[n.y] && grid[n.y][n.x] && (n.expectedStarts.includes(grid[n.y][n.x].start) || n.expectedStarts.includes(grid[n.y][n.x].end)));
-            if (!nextNeighbor) break; // Pas de connexion suivante
+            if (!nextNeighbor) {
+                console.log(`No valid neighbor found for direction ${nextDir}`);
+                break; // Pas de connexion suivante
+            }
 
             currentX = nextNeighbor.x;
             currentY = nextNeighbor.y;
@@ -335,19 +353,69 @@ function checkPatterns(startX, startY) {
 
             // Vérifier si on boucle
             if (currentX === startX && currentY === startY) {
+                console.log("Cycle detected:", path);
                 if (isValidClosedPattern(path)) {
+                    console.log("Valid closed pattern detected");
                     return path; // Motif détecté
                 }
+                console.log("Invalid closed pattern");
                 break; // Cycle non valide
             }
 
-            if (visited.has(`${currentX},${currentY}`)) break; // Cycle non fermé
+            if (visited.has(`${currentX},${currentY}`)) {
+                console.log(`Cycle non fermé at ${currentX},${currentY}`);
+                break; // Cycle non fermé
+            }
             visited.add(`${currentX},${currentY}`);
             path.push([currentX, currentY]);
         }
         return null;
     }
 
+    // Vérifier les cases correspondant à start et end
+    const startNeighbors = directions[piece.start].map(([dx, dy], idx) => {
+        const nx = startX + dx;
+        const ny = startY + dy;
+        const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+        return { x: nx, y: ny, valid, expectedEnds: opposites[piece.start] ? opposites[piece.start][idx] : [] };
+    });
+    const endNeighbors = directions[piece.end].map(([dx, dy], idx) => {
+        const nx = startX + dx;
+        const ny = startY + dy;
+        const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+        return { x: nx, y: ny, valid, expectedStarts: opposites[piece.end] ? opposites[piece.end][idx] : [] };
+    });
+
+    // Vérifier si au moins une case est occupée pour start et end
+    const startOccupied = startNeighbors.some(n => n.valid && grid[n.y] && grid[n.y][n.x]);
+    const endOccupied = endNeighbors.some(n => n.valid && grid[n.y] && grid[n.y][n.x]);
+    if (!startOccupied || !endOccupied) {
+        console.log("No occupied neighbors for start or end");
+        return;
+    }
+
+    // Explorer les chemins à partir de start et end
+    const startPaths = startNeighbors.filter(n => n.valid && grid[n.y] && grid[n.y][n.x] && n.expectedEnds.includes(grid[n.y][n.x].end));
+    const endPaths = endNeighbors.filter(n => n.valid && grid[n.y] && grid[n.y][n.x] && n.expectedStarts.includes(grid[n.y][n.x].start));
+
+    // Explorer à partir de start
+    for (const startNeighbor of startPaths) {
+        const path = explorePath(startNeighbor.x, startNeighbor.y, piece.start);
+        if (path) {
+            animatePattern(path);
+            return;
+        }
+    }
+
+    // Explorer à partir de end
+    for (const endNeighbor of endPaths) {
+        const path = explorePath(endNeighbor.x, endNeighbor.y, piece.end);
+        if (path) {
+            animatePattern(path);
+            return;
+        }
+    }
+}
     // Vérifier les cases correspondant à start et end
     const startNeighbors = directions[piece.start].map(([dx, dy], idx) => {
         const nx = startX + dx;
