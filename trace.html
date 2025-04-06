@@ -27,7 +27,7 @@
         .cell {
             width: 40px;
             height: 40px;
-            background-color: #fff;
+            background-color: #fff !important; /* Force le fond blanc */
             position: relative;
         }
         .error {
@@ -129,6 +129,7 @@
             canvas.style.top = '0';
             canvas.style.left = '0';
             canvas.style.zIndex = '1';
+            canvas.style.backgroundColor = 'transparent'; // Assure que le canvas est transparent
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, size, size);
             ctx.beginPath();
@@ -326,7 +327,8 @@
                 path.forEach(([x, y]) => {
                     grid[y][x] = null;
                     const cell = gridElement.children[y * gridSize + x];
-                    cell.innerHTML = '';
+                    cell.innerHTML = ''; // Vide la cellule
+                    cell.style.backgroundColor = '#fff'; // Restaure le fond blanc
                 });
                 const points = path.length + Math.floor(path.length / 5) * 5;
                 score += points;
