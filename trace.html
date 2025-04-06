@@ -240,7 +240,7 @@
         }
 
 // Nouvelle méthode de détection des motifs
-        // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -260,14 +260,14 @@ function checkPatterns(startX, startY) {
         'left': [[-1, 0]] // Gauche
     };
     const opposites = {
-        'top-left': 'bottom-right',
-        'top': 'bottom',
-        'top-right': 'bottom-left',
-        'right': 'left',
-        'bottom-right': 'top-left',
-        'bottom': 'top',
-        'bottom-left': 'top-right',
-        'left': 'right'
+        'top-left': { diagonal: 'bottom-right', up: 'bottom-left', left: 'top-right' },
+        'top': { up: 'bottom' },
+        'top-right': { diagonal: 'bottom-left', up: 'bottom-right', right: 'top-left' },
+        'right': { right: 'left' },
+        'bottom-right': { diagonal: 'top-left', down: 'top-right', right: 'bottom-left' },
+        'bottom': { down: 'top' },
+        'bottom-left': { diagonal: 'top-right', down: 'top-left', left: 'bottom-right' },
+        'left': { left: 'right' }
     };
 
     // Construire le graphe des points spécifiques
@@ -297,23 +297,18 @@ function checkPatterns(startX, startY) {
             // Ajouter les connexions inter-pièce
             pointsList.forEach(point => {
                 const dirList = directions[point] || [];
-                dirList.forEach(([dx, dy]) => {
+                dirList.forEach(([dx, dy], idx) => {
                     const nx = x + dx;
                     const ny = y + dy;
                     if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
                         const neighborPiece = grid[ny][nx];
                         const neighborKey = `${nx},${ny}`;
                         const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
-                        const oppositePoint = opposites[point];
-                        if (point === piece.start && neighborPoints.has(oppositePoint)) {
-                            const point1 = `${point}@${pieceKey}`;
-                            const point2 = `${oppositePoint}@${neighborKey}`;
-                            graph.get(point1).add(point2);
-                            graph.get(point2).add(point1);
-                        }
-                        if (point === piece.end && neighborPoints.has(oppositePoint)) {
-                            const point1 = `${point}@${pieceKey}`;
-                            const point2 = `${oppositePoint}@${neighborKey}`;
+                        const oppositePoints = opposites[point] || {};
+                        const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
+                        if (oppositePoint && (piece.start === point || piece.end === point) && neighborPoints.has(oppositePoint)) {
+                            const point1 = (piece.start === point) ? `${piece.start}@${pieceKey}` : `${piece.end}@${pieceKey}`;
+                            const point2 = (neighborPiece.start === oppositePoint) ? `${neighborPiece.start}@${neighborKey}` : `${neighborPiece.end}@${neighborKey}`;
                             graph.get(point1).add(point2);
                             graph.get(point2).add(point1);
                         }
