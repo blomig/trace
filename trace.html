@@ -239,7 +239,6 @@
             return grid.some(row => row.some(cell => !cell));
         }
 
-       // Nouvelle méthode de détection des motifs
 // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
@@ -333,21 +332,23 @@ function checkPatterns(startX, startY) {
                     const neighborPiece = grid[neighbor.split(',')[1]][neighbor.split(',')[0]];
                     const neighborPoints = piecePoints.get(neighbor);
                     let connectionPoint = null;
+                    let nextPoint = null;
 
                     // Trouver le point de connexion entre les deux pièces
                     for (let point of piecePointsSet) {
                         const oppositePoint = opposites[point];
                         if (neighborPoints.has(oppositePoint)) {
                             connectionPoint = point;
+                            nextPoint = oppositePoint;
                             break;
                         }
                     }
 
-                    if (!connectionPoint) continue;
+                    if (!connectionPoint || !nextPoint) continue;
 
                     pointsPath.push(connectionPoint);
                     parent.set(neighbor, node);
-                    if (dfs(neighbor, startNode, opposites[connectionPoint])) {
+                    if (dfs(neighbor, startNode, nextPoint)) {
                         return true;
                     }
                     pointsPath.pop();
@@ -357,7 +358,7 @@ function checkPatterns(startX, startY) {
                     const startPoints = piecePoints.get(startNode);
                     const lastPoint = pointsPath[pointsPath.length - 1];
                     const firstPoint = pointsPath[0];
-                    if (startPoints.has(opposites[lastPoint]) && opposites[firstPoint] === prevPoint) {
+                    if (startPoints.has(opposites[lastPoint])) {
                         path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
                         return true;
                     }
