@@ -240,6 +240,7 @@
         }
 
        // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -276,18 +277,19 @@ function checkPatterns(startX, startY) {
             return false;
         }
 
-        // Vérifier que les traits forment une boucle continue
+        // Construire la liste des points dans l'ordre du chemin
         const points = [];
-        for (let i = 0; i < path.length - 1; i++) { // On exclut la dernière entrée, car elle est identique à la première
+        for (let i = 0; i < path.length - 1; i++) { // Exclure la dernière entrée (répétition de la première)
             const [x, y] = path[i];
             const piece = grid[y][x];
             const nextPiece = grid[path[(i + 1) % (path.length - 1)][1]][path[(i + 1) % (path.length - 1)][0]];
 
-            points.push(piece.start);
-            points.push(piece.end);
-
+            // Ajouter les points dans l'ordre de connexion
             const currentDir = i % 2 === 0 ? piece.end : piece.start;
             const nextDir = i % 2 === 0 ? nextPiece.start : nextPiece.end;
+            points.push(currentDir);
+
+            // Vérifier que les directions se connectent correctement
             const expectedNextDir = opposites[currentDir] && opposites[currentDir][0] ? opposites[currentDir][0][0] : null;
             if (!nextDir || !expectedNextDir || !opposites[currentDir] || !opposites[currentDir][0].includes(nextDir)) {
                 console.log(`Invalid connection at step ${i}: ${currentDir} → ${nextDir}, expected ${expectedNextDir}`);
@@ -295,8 +297,22 @@ function checkPatterns(startX, startY) {
             }
         }
 
-        console.log("Points in cycle:", points);
-        return points.length >= 4;
+        // Ajouter le dernier point pour boucler
+        points.push(points[0]);
+
+        // Vérifier que les points forment une boucle continue
+        for (let i = 0; i < points.length - 1; i++) {
+            const currentPoint = points[i];
+            const nextPoint = points[i + 1];
+            const expectedNextPoint = opposites[currentPoint] && opposites[currentPoint][0] ? opposites[currentPoint][0][0] : null;
+            if (!expectedNextPoint || expectedNextPoint !== nextPoint) {
+                console.log(`Points do not form a closed loop: ${currentPoint} → ${nextPoint}, expected ${expectedNextPoint}`);
+                return false;
+            }
+        }
+
+        console.log("Points in cycle form a closed loop:", points);
+        return true;
     }
 
     // Fonction pour explorer un chemin
@@ -349,7 +365,7 @@ function checkPatterns(startX, startY) {
             currentY = nextNeighbor.y;
             currentDir = nextDir;
 
-            path.push([currentX, currentY]); // Ajouter la pièce au chemin avant de vérifier le boucle
+            path.push([currentX, currentY]);
 
             if (currentX === startX && currentY === startY) {
                 console.log("Cycle detected:", path);
