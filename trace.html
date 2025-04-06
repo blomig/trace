@@ -269,6 +269,7 @@ function checkPatterns(startX, startY) {
         'bottom-left': { diagonal: 'top-right', down: 'top-left', left: 'bottom-right' },
         'left': { left: 'right' }
     };
+    const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
 
     // Stocker les pièces posées et leurs traits
     const pieces = [];
@@ -285,6 +286,7 @@ function checkPatterns(startX, startY) {
         const visited = new Set();
         const parent = new Map();
         const path = [];
+        const pointsPath = [];
 
         function dfs(pieceIdx, startIdx, prevPoint) {
             const piece = pieces[pieceIdx];
@@ -292,7 +294,7 @@ function checkPatterns(startX, startY) {
             visited.add(pieceKey);
             path.push(pieceKey);
 
-            const piecePoints = new Set([piece.start, piece.end]);
+            const piecePoints = [piece.start, piece.end];
             let entryPoint = prevPoint;
 
             // Explorer les pièces voisines
@@ -309,12 +311,18 @@ function checkPatterns(startX, startY) {
                         const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
                         const oppositePoints = opposites[point] || {};
                         const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
-                        if (oppositePoint && piecePoints.has(point) && neighborPoints.has(oppositePoint)) {
+                        if (oppositePoint && (piece.start === point || piece.end === point) && neighborPoints.has(oppositePoint)) {
                             const neighborIdx = pieces.findIndex(p => p.x === nx && p.y === ny);
+                            const currentPoint = (piece.start === point) ? piece.start : piece.end;
+                            const nextPoint = oppositePoint;
+                            pointsPath.push(currentPoint);
+
                             parent.set(neighborKey, pieceKey);
-                            if (dfs(neighborIdx, startIdx, oppositePoint)) {
+                            if (dfs(neighborIdx, startIdx, nextPoint)) {
                                 return true;
                             }
+
+                            pointsPath.pop();
                         }
                     }
                 });
@@ -324,7 +332,21 @@ function checkPatterns(startX, startY) {
                 const startPiece = pieces[startIdx];
                 const startKey = `${startPiece.x},${startPiece.y}`;
                 if (pieceKey === startKey) {
-                    return true;
+                    const startPoints = new Set([startPiece.start, startPiece.end]);
+                    const lastPoint = pointsPath[pointsPath.length - 1];
+                    const firstPoint = pointsPath[0];
+                    const oppositePoints = opposites[lastPoint] || {};
+                    let connectionPoint = null;
+                    pointsList.forEach(p => {
+                        const oppositePoint = oppositePoints[p === lastPoint ? (directions[p][0] ? 'diagonal' : (directions[p][1] ? 'up' : 'down')) : (p === 'right' || p === 'left' ? 'right' : 'left')];
+                        if (oppositePoint && startPoints.has(oppositePoint) && oppositePoint === firstPoint) {
+                            connectionPoint = oppositePoint;
+                        }
+                    });
+                    if (connectionPoint) {
+                        path.push(neighborKey); // Ajouter le nœud de départ pour fermer le cycle
+                        return true;
+                    }
                 }
             }
 
@@ -337,6 +359,7 @@ function checkPatterns(startX, startY) {
         const startIdx = pieces.findIndex(p => p.x === startX && p.y === startY);
         visited.clear();
         path.length = 0;
+        pointsPath.length = 0;
         parent.clear();
         if (dfs(startIdx, startIdx, null)) {
             return path;
