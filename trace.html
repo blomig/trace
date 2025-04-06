@@ -237,8 +237,7 @@
 
         // Nouvelle méthode de détection des motifs
         // Nouvelle méthode de détection des motifs
-// Nouvelle méthode de détection des motifs
-// Nouvelle méthode de détection des motifs
+       // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     const piece = grid[startY][startX];
     const directions = {
@@ -276,36 +275,18 @@ function checkPatterns(startX, startY) {
             let nextDir;
 
             // Déterminer la direction suivante
-            if (currentPiece.start === opposites[currentDir][0]) {
-                nextDir = currentPiece.end;
-            } else if (currentPiece.end === opposites[currentDir][0]) {
-                nextDir = currentPiece.start;
-            } else {
-                // Vérifier les autres directions possibles
-                const possibleDirs = [currentPiece.start, currentPiece.end];
-                const nextNeighbors = possibleDirs.flatMap(dir =>
-                    directions[dir].map(([dx, dy], idx) => {
-                        const nx = currentX + dx;
-                        const ny = currentY + dy;
-                        const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
-                        return { x: nx, y: ny, valid, expectedStarts: opposites[dir][idx], dir };
-                    })
-                );
-                const nextNeighbor = nextNeighbors.find(n => n.valid && grid[n.y] && grid[n.y][n.x] && (n.expectedStarts.includes(grid[n.y][n.x].start) || n.expectedStarts.includes(grid[n.y][n.x].end)));
-                if (!nextNeighbor) break;
-                currentX = nextNeighbor.x;
-                currentY = nextNeighbor.y;
-                nextDir = nextNeighbor.dir;
-            }
+            const possibleDirs = [currentPiece.start, currentPiece.end].filter(dir => dir !== currentDir);
+            nextDir = possibleDirs.find(dir => {
+                const nextNeighbors = directions[dir].map(([dx, dy], idx) => {
+                    const nx = currentX + dx;
+                    const ny = currentY + dy;
+                    const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+                    return { x: nx, y: ny, valid, expectedStarts: opposites[dir][idx], dir };
+                });
+                return nextNeighbors.some(n => n.valid && grid[n.y] && grid[n.y][n.x] && (n.expectedStarts.includes(grid[n.y][n.x].start) || n.expectedStarts.includes(grid[n.y][n.x].end)));
+            });
 
-            // Vérifier si on boucle
-            if (currentX === startX && currentY === startY) {
-                return path; // Motif détecté
-            }
-
-            if (visited.has(`${currentX},${currentY}`)) break; // Cycle non fermé
-            visited.add(`${currentX},${currentY}`);
-            path.push([currentX, currentY]);
+            if (!nextDir) break; // Pas de direction suivante
 
             const nextNeighbors = directions[nextDir].map(([dx, dy], idx) => {
                 const nx = currentX + dx;
@@ -320,6 +301,15 @@ function checkPatterns(startX, startY) {
             currentX = nextNeighbor.x;
             currentY = nextNeighbor.y;
             currentDir = nextDir;
+
+            // Vérifier si on boucle
+            if (currentX === startX && currentY === startY) {
+                return path; // Motif détecté
+            }
+
+            if (visited.has(`${currentX},${currentY}`)) break; // Cycle non fermé
+            visited.add(`${currentX},${currentY}`);
+            path.push([currentX, currentY]);
         }
         return null;
     }
@@ -364,7 +354,9 @@ function checkPatterns(startX, startY) {
             return;
         }
     }
-}        // Animer le motif détecté
+}
+        
+        // Animer le motif détecté
         function animatePattern(path) {
     path.forEach(([x, y]) => {
         const cell = gridElement.children[y * gridSize + x];
