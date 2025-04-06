@@ -236,76 +236,97 @@
         }
 
         // Nouvelle méthode de détection des motifs
-        function checkPatterns(startX, startY) {
-            const piece = grid[startY][startX];
-            const directions = {
-                'top-left': [-1, -1], 'top': [0, -1], 'top-right': [1, -1],
-                'right': [1, 0], 'bottom-right': [1, 1], 'bottom': [0, 1],
-                'bottom-left': [-1, 1], 'left': [-1, 0]
-            };
-            const opposites = {
-                'top-left': 'bottom-right', 'top': 'bottom', 'top-right': 'bottom-left',
-                'right': 'left', 'bottom-right': 'top-left', 'bottom': 'top',
-                'bottom-left': 'top-right', 'left': 'right'
-            };
+        // Nouvelle méthode de détection des motifs
+function checkPatterns(startX, startY) {
+    const piece = grid[startY][startX];
+    const directions = {
+        'top-left': [[-1, -1], [0, -1], [-1, 0]], // Diagonale, haut, gauche
+        'top': [[0, -1]], // Haut
+        'top-right': [[1, -1], [0, -1], [1, 0]], // Diagonale, haut, droite
+        'right': [[1, 0]], // Droite
+        'bottom-right': [[1, 1], [0, 1], [1, 0]], // Diagonale, bas, droite
+        'bottom': [[0, 1]], // Bas
+        'bottom-left': [[-1, 1], [0, 1], [-1, 0]], // Diagonale, bas, gauche
+        'left': [[-1, 0]] // Gauche
+    };
+    const opposites = {
+        'top-left': ['bottom-right', 'bottom-right', 'top-right'], // Diagonale → bottom-right, haut → bottom-right, gauche → top-right
+        'top': ['bottom'],
+        'top-right': ['bottom-left', 'bottom-left', 'top-left'], // Diagonale → bottom-left, haut → bottom-left, droite → top-left
+        'right': ['left'],
+        'bottom-right': ['top-left', 'top-left', 'bottom-left'], // Diagonale → top-left, bas → top-left, droite → bottom-left
+        'bottom': ['top'],
+        'bottom-left': ['top-right', 'top-right', 'bottom-right'], // Diagonale → top-right, bas → top-right, gauche → bottom-right
+        'left': ['right']
+    };
 
-            // Vérifier les cases correspondant à start et end
-            const [startDx, startDy] = directions[piece.start];
-            const [endDx, endDy] = directions[piece.end];
-            const startNeighborX = startX + startDx;
-            const startNeighborY = startY + startDy;
-            const endNeighborX = startX + endDx;
-            const endNeighborY = startY + endDy;
+    // Vérifier les cases correspondant à start et end
+    const startNeighbors = directions[piece.start].map(([dx, dy], idx) => {
+        const nx = startX + dx;
+        const ny = startY + dy;
+        const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+        return { x: nx, y: ny, valid, expectedEnd: opposites[piece.start][idx] };
+    });
+    const endNeighbors = directions[piece.end].map(([dx, dy], idx) => {
+        const nx = startX + dx;
+        const ny = startY + dy;
+        const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+        return { x: nx, y: ny, valid, expectedStart: opposites[piece.end][idx] };
+    });
 
-            const startValid = startNeighborX >= 0 && startNeighborX < gridSize && startNeighborY >= 0 && startNeighborY < gridSize;
-            const endValid = endNeighborX >= 0 && endNeighborX < gridSize && endNeighborY >= 0 && endNeighborY < gridSize;
+    // Vérifier si au moins une case est occupée pour start et end
+    const startOccupied = startNeighbors.some(n => n.valid && grid[n.y] && grid[n.y][n.x]);
+    const endOccupied = endNeighbors.some(n => n.valid && grid[n.y] && grid[n.y][n.x]);
+    if (!startOccupied || !endOccupied) return;
 
-            if (!startValid || !endValid) return;
-            if (!grid[startNeighborY][startNeighborX] || !grid[endNeighborY][endNeighborX]) return;
+    // Explorer les chemins à partir de end
+    const pathsToExplore = endNeighbors.filter(n => n.valid && grid[n.y] && grid[n.y][n.x] && grid[n.y][n.x].start === n.expectedStart);
+    for (const startNeighbor of pathsToExplore) {
+        let currentX = startNeighbor.x;
+        let currentY = startNeighbor.y;
+        let currentDir = piece.end;
+        const visited = new Set();
+        const path = [[startX, startY]];
+        visited.add(`${startX},${startY}`);
 
-            // Suivre le chemin à partir de end
-            let currentX = endNeighborX;
-            let currentY = endNeighborY;
-            let currentDir = piece.end;
-            const visited = new Set();
-            const path = [[startX, startY]];
-            visited.add(`${startX},${startY}`);
-
-            while (true) {
-                if (currentX === startX && currentY === startY) {
-                    // Motif détecté
-                    animatePattern(path);
-                    break;
-                }
-                visited.add(`${currentX},${currentY}`);
-                path.push([currentX, currentY]);
-
-                const currentPiece = grid[currentY][currentX];
-                const expectedStart = opposites[currentDir];
-                let nextDir, nextX, nextY;
-
-                if (currentPiece.start === expectedStart) {
-                    nextDir = currentPiece.end;
-                } else if (currentPiece.end === expectedStart) {
-                    nextDir = currentPiece.start;
-                } else {
-                    break; // Pas de connexion
-                }
-
-                const [dx, dy] = directions[nextDir];
-                nextX = currentX + dx;
-                nextY = currentY + dy;
-
-                if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize || !grid[nextY][nextX]) {
-                    break; // Case vide ou hors grille
-                }
-
-                currentX = nextX;
-                currentY = nextY;
-                currentDir = nextDir;
+        while (true) {
+            if (currentX === startX && currentY === startY) {
+                // Motif détecté
+                animatePattern(path);
+                break;
             }
-        }
+            if (visited.has(`${currentX},${currentY}`)) break; // Cycle non fermé
+            visited.add(`${currentX},${currentY}`);
+            path.push([currentX, currentY]);
 
+            const currentPiece = grid[currentY][currentX];
+            const expectedStart = opposites[currentDir][0]; // Prendre la première correspondance
+            let nextDir, nextX, nextY;
+
+            if (currentPiece.start === expectedStart) {
+                nextDir = currentPiece.end;
+            } else if (currentPiece.end === expectedStart) {
+                nextDir = currentPiece.start;
+            } else {
+                break; // Pas de connexion
+            }
+
+            const nextNeighbors = directions[nextDir].map(([dx, dy], idx) => {
+                const nx = currentX + dx;
+                const ny = currentY + dy;
+                const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+                return { x: nx, y: ny, valid, expectedStart: opposites[nextDir][idx] };
+            });
+
+            const nextNeighbor = nextNeighbors.find(n => n.valid && grid[n.y] && grid[n.y][n.x] && grid[n.y][n.x].start === n.expectedStart);
+            if (!nextNeighbor) break; // Pas de connexion suivante
+
+            currentX = nextNeighbor.x;
+            currentY = nextNeighbor.y;
+            currentDir = nextDir;
+        }
+    }
+}
         // Animer le motif détecté
         function animatePattern(path) {
     path.forEach(([x, y]) => {
