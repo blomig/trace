@@ -240,7 +240,7 @@
         }
 
 // Nouvelle méthode de détection des motifs
-        // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -270,124 +270,75 @@ function checkPatterns(startX, startY) {
         'left': { left: 'right' }
     };
 
-    // Construire le graphe des pièces
-    const graph = new Map(); // Graphe des pièces (position → liste de positions voisines)
-    const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
-
-    // Initialiser le graphe
-    for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-            if (!grid[y][x]) continue;
-            const pieceKey = `${x},${y}`;
-            graph.set(pieceKey, new Set());
-        }
-    }
-
-    // Ajouter les connexions inter-pièce
+    // Stocker les pièces posées et leurs traits
+    const pieces = [];
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
             if (!grid[y][x]) continue;
             const piece = grid[y][x];
-            const pieceKey = `${x},${y}`;
-            const piecePoints = new Set([piece.start, piece.end]);
-
-            pointsList.forEach(point => {
-                const dirList = directions[point] || [];
-                dirList.forEach(([dx, dy], idx) => {
-                    const nx = x + dx;
-                    const ny = y + dy;
-                    if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
-                        const neighborPiece = grid[ny][nx];
-                        const neighborKey = `${nx},${ny}`;
-                        const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
-                        const oppositePoints = opposites[point] || {};
-                        const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
-                        if (oppositePoint && piecePoints.has(point) && neighborPoints.has(oppositePoint)) {
-                            graph.get(pieceKey).add(neighborKey);
-                            graph.get(neighborKey).add(pieceKey);
-                        }
-                    }
-                });
-            });
+            pieces.push({ x, y, start: piece.start, end: piece.end });
         }
     }
 
-    // Recherche d'un cycle fermé dans le graphe des pièces
+    // Recherche d'un cycle fermé en suivant les traits
     function findCycle() {
         const visited = new Set();
         const parent = new Map();
         const path = [];
 
-        function dfs(node, startNode, prevPoint) {
-            visited.add(node);
-            path.push(node);
+        function dfs(pieceIdx, startIdx, prevPoint) {
+            const piece = pieces[pieceIdx];
+            const pieceKey = `${piece.x},${piece.y}`;
+            visited.add(pieceKey);
+            path.push(pieceKey);
 
-            const [x, y] = node.split(',').map(Number);
-            const piece = grid[y][x];
             const piecePoints = new Set([piece.start, piece.end]);
+            let entryPoint = prevPoint;
 
-            for (let neighbor of graph.get(node)) {
-                if (!visited.has(neighbor)) {
-                    const [nx, ny] = neighbor.split(',').map(Number);
-                    const neighborPiece = grid[ny][nx];
-                    const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
-                    let connectionPoint = null;
-                    let nextPoint = null;
+            // Explorer les pièces voisines
+            pointsList.forEach(point => {
+                const dirList = directions[point] || [];
+                dirList.forEach(([dx, dy], idx) => {
+                    const nx = piece.x + dx;
+                    const ny = piece.y + dy;
+                    if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
+                        const neighborKey = `${nx},${ny}`;
+                        if (visited.has(neighborKey)) return;
 
-                    // Trouver le point de connexion entre les deux pièces
-                    for (let point of piecePoints) {
+                        const neighborPiece = grid[ny][nx];
+                        const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
                         const oppositePoints = opposites[point] || {};
-                        pointsList.forEach(p => {
-                            const oppositePoint = oppositePoints[p === point ? (directions[p][0] ? 'diagonal' : (directions[p][1] ? 'up' : 'down')) : (p === 'right' || p === 'left' ? 'right' : 'left')];
-                            if (oppositePoint && neighborPoints.has(oppositePoint)) {
-                                connectionPoint = point;
-                                nextPoint = oppositePoint;
+                        const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
+                        if (oppositePoint && piecePoints.has(point) && neighborPoints.has(oppositePoint)) {
+                            const neighborIdx = pieces.findIndex(p => p.x === nx && p.y === ny);
+                            parent.set(neighborKey, pieceKey);
+                            if (dfs(neighborIdx, startIdx, oppositePoint)) {
+                                return true;
                             }
-                        });
-                        if (connectionPoint && nextPoint) break;
+                        }
                     }
+                });
+            });
 
-                    if (!connectionPoint || !nextPoint) continue;
-
-                    parent.set(neighbor, node);
-                    if (dfs(neighbor, startNode, nextPoint)) {
-                        return true;
-                    }
-                } else if (neighbor === startNode && path.length > 2) { // Cycle fermé trouvé
-                    const startPiece = grid[startNode.split(',')[1]][startNode.split(',')[0]];
-                    const startPoints = new Set([startPiece.start, startPiece.end]);
-                    const lastPoint = path[path.length - 1];
-                    const [lx, ly] = lastPoint.split(',').map(Number);
-                    const lastPiece = grid[ly][lx];
-                    const lastPoints = new Set([lastPiece.start, lastPiece.end]);
-                    let connectionPoint = null;
-                    for (let point of lastPoints) {
-                        const oppositePoints = opposites[point] || {};
-                        pointsList.forEach(p => {
-                            const oppositePoint = oppositePoints[p === point ? (directions[p][0] ? 'diagonal' : (directions[p][1] ? 'up' : 'down')) : (p === 'right' || p === 'left' ? 'right' : 'left')];
-                            if (oppositePoint && startPoints.has(oppositePoint)) {
-                                connectionPoint = point;
-                            }
-                        });
-                        if (connectionPoint) break;
-                    }
-                    if (connectionPoint) {
-                        path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
-                        return true;
-                    }
+            if (path.length > 2) {
+                const startPiece = pieces[startIdx];
+                const startKey = `${startPiece.x},${startPiece.y}`;
+                if (pieceKey === startKey) {
+                    return true;
                 }
             }
 
+            visited.delete(pieceKey);
             path.pop();
             return false;
         }
 
         // Essayer de trouver un cycle à partir de chaque pièce
-        const startPieceKey = `${startX},${startY}`;
+        const startIdx = pieces.findIndex(p => p.x === startX && p.y === startY);
         visited.clear();
         path.length = 0;
         parent.clear();
-        if (dfs(startPieceKey, startPieceKey, null)) {
+        if (dfs(startIdx, startIdx, null)) {
             return path;
         }
 
