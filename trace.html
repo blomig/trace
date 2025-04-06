@@ -282,7 +282,7 @@ function checkPatterns(startX, startY) {
         for (let i = 0; i < path.length - 1; i++) { // Exclure la dernière entrée (répétition de la première)
             const [x, y] = path[i];
             const piece = grid[y][x];
-            const nextPiece = grid[path[(i + 1)][1]][path[(i + 1)][0]]; // On utilise i+1 directement
+            const nextPiece = grid[path[i + 1][1]][path[i + 1][0]];
 
             // Ajouter les points dans l'ordre de connexion
             const currentDir = piece.end;
