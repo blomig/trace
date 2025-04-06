@@ -240,7 +240,7 @@
         }
 
 // Nouvelle méthode de détection des motifs
-// Nouvelle méthode de détection des motifs
+        // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -270,31 +270,27 @@ function checkPatterns(startX, startY) {
         'left': { left: 'right' }
     };
 
-    // Construire le graphe des points spécifiques
-    const graph = new Map(); // Graphe des points spécifiques (point@position)
+    // Construire le graphe des pièces
+    const graph = new Map(); // Graphe des pièces (position → liste de positions voisines)
     const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
-    const pointToPosition = new Map(); // Map pour associer chaque point spécifique à sa position
 
     // Initialiser le graphe
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
             if (!grid[y][x]) continue;
+            const pieceKey = `${x},${y}`;
+            graph.set(pieceKey, new Set());
+        }
+    }
+
+    // Ajouter les connexions inter-pièce
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            if (!grid[y][x]) continue;
             const piece = grid[y][x];
             const pieceKey = `${x},${y}`;
+            const piecePoints = new Set([piece.start, piece.end]);
 
-            // Ajouter les points spécifiques de la pièce
-            const startPoint = `${piece.start}@${pieceKey}`;
-            const endPoint = `${piece.end}@${pieceKey}`;
-            graph.set(startPoint, new Set());
-            graph.set(endPoint, new Set());
-            pointToPosition.set(startPoint, [x, y]);
-            pointToPosition.set(endPoint, [x, y]);
-
-            // Ajouter les connexions intra-pièce (bidirectionnelles)
-            graph.get(startPoint).add(endPoint);
-            graph.get(endPoint).add(startPoint);
-
-            // Ajouter les connexions inter-pièce
             pointsList.forEach(point => {
                 const dirList = directions[point] || [];
                 dirList.forEach(([dx, dy], idx) => {
@@ -306,11 +302,9 @@ function checkPatterns(startX, startY) {
                         const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
                         const oppositePoints = opposites[point] || {};
                         const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
-                        if (oppositePoint && (piece.start === point || piece.end === point) && neighborPoints.has(oppositePoint)) {
-                            const point1 = (piece.start === point) ? `${piece.start}@${pieceKey}` : `${piece.end}@${pieceKey}`;
-                            const point2 = (neighborPiece.start === oppositePoint) ? `${neighborPiece.start}@${neighborKey}` : `${neighborPiece.end}@${neighborKey}`;
-                            graph.get(point1).add(point2);
-                            graph.get(point2).add(point1);
+                        if (oppositePoint && piecePoints.has(point) && neighborPoints.has(oppositePoint)) {
+                            graph.get(pieceKey).add(neighborKey);
+                            graph.get(neighborKey).add(pieceKey);
                         }
                     }
                 });
@@ -318,25 +312,69 @@ function checkPatterns(startX, startY) {
         }
     }
 
-    // Recherche d'un cycle fermé dans le graphe des points spécifiques
+    // Recherche d'un cycle fermé dans le graphe des pièces
     function findCycle() {
         const visited = new Set();
         const parent = new Map();
         const path = [];
 
-        function dfs(node, startNode) {
+        function dfs(node, startNode, prevPoint) {
             visited.add(node);
             path.push(node);
 
+            const [x, y] = node.split(',').map(Number);
+            const piece = grid[y][x];
+            const piecePoints = new Set([piece.start, piece.end]);
+
             for (let neighbor of graph.get(node)) {
                 if (!visited.has(neighbor)) {
+                    const [nx, ny] = neighbor.split(',').map(Number);
+                    const neighborPiece = grid[ny][nx];
+                    const neighborPoints = new Set([neighborPiece.start, neighborPiece.end]);
+                    let connectionPoint = null;
+                    let nextPoint = null;
+
+                    // Trouver le point de connexion entre les deux pièces
+                    for (let point of piecePoints) {
+                        const oppositePoints = opposites[point] || {};
+                        pointsList.forEach(p => {
+                            const oppositePoint = oppositePoints[p === point ? (directions[p][0] ? 'diagonal' : (directions[p][1] ? 'up' : 'down')) : (p === 'right' || p === 'left' ? 'right' : 'left')];
+                            if (oppositePoint && neighborPoints.has(oppositePoint)) {
+                                connectionPoint = point;
+                                nextPoint = oppositePoint;
+                            }
+                        });
+                        if (connectionPoint && nextPoint) break;
+                    }
+
+                    if (!connectionPoint || !nextPoint) continue;
+
                     parent.set(neighbor, node);
-                    if (dfs(neighbor, startNode)) {
+                    if (dfs(neighbor, startNode, nextPoint)) {
                         return true;
                     }
                 } else if (neighbor === startNode && path.length > 2) { // Cycle fermé trouvé
-                    path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
-                    return true;
+                    const startPiece = grid[startNode.split(',')[1]][startNode.split(',')[0]];
+                    const startPoints = new Set([startPiece.start, startPiece.end]);
+                    const lastPoint = path[path.length - 1];
+                    const [lx, ly] = lastPoint.split(',').map(Number);
+                    const lastPiece = grid[ly][lx];
+                    const lastPoints = new Set([lastPiece.start, lastPiece.end]);
+                    let connectionPoint = null;
+                    for (let point of lastPoints) {
+                        const oppositePoints = opposites[point] || {};
+                        pointsList.forEach(p => {
+                            const oppositePoint = oppositePoints[p === point ? (directions[p][0] ? 'diagonal' : (directions[p][1] ? 'up' : 'down')) : (p === 'right' || p === 'left' ? 'right' : 'left')];
+                            if (oppositePoint && startPoints.has(oppositePoint)) {
+                                connectionPoint = point;
+                            }
+                        });
+                        if (connectionPoint) break;
+                    }
+                    if (connectionPoint) {
+                        path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
+                        return true;
+                    }
                 }
             }
 
@@ -344,16 +382,13 @@ function checkPatterns(startX, startY) {
             return false;
         }
 
-        // Essayer de trouver un cycle à partir de chaque point spécifique
+        // Essayer de trouver un cycle à partir de chaque pièce
         const startPieceKey = `${startX},${startY}`;
-        const startPoints = [`${piece.start}@${startPieceKey}`, `${piece.end}@${startPieceKey}`];
-        for (let startPoint of startPoints) {
-            visited.clear();
-            path.length = 0;
-            parent.clear();
-            if (dfs(startPoint, startPoint)) {
-                return path;
-            }
+        visited.clear();
+        path.length = 0;
+        parent.clear();
+        if (dfs(startPieceKey, startPieceKey, null)) {
+            return path;
         }
 
         return null;
@@ -367,15 +402,8 @@ function checkPatterns(startX, startY) {
 
     console.log("Cycle found:", cycle);
 
-    // Extraire les pièces impliquées dans le cycle
-    const piecesInCycle = new Set();
-    for (let node of cycle) {
-        const [_, position] = node.split('@');
-        piecesInCycle.add(position);
-    }
-
     // Convertir les pièces en coordonnées pour animatePattern
-    const path = Array.from(piecesInCycle).map(key => {
+    const path = cycle.slice(0, -1).map(key => { // Exclure la dernière entrée (répétition de la première)
         const [x, y] = key.split(',').map(Number);
         return [x, y];
     });
@@ -383,7 +411,8 @@ function checkPatterns(startX, startY) {
     if (path.length > 0) {
         animatePattern(path);
     }
-}       
+}
+        
         // Animer le motif détecté
         function animatePattern(path) {
             path.forEach(([x, y]) => {
