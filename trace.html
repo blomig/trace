@@ -237,6 +237,7 @@
 
         // Nouvelle méthode de détection des motifs
         // Nouvelle méthode de détection des motifs
+// Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     const piece = grid[startY][startX];
     const directions = {
@@ -250,14 +251,14 @@ function checkPatterns(startX, startY) {
         'left': [[-1, 0]] // Gauche
     };
     const opposites = {
-        'top-left': ['bottom-right', 'bottom-right', 'top-right'], // Diagonale → bottom-right, haut → bottom-right, gauche → top-right
-        'top': ['bottom'],
-        'top-right': ['bottom-left', 'bottom-left', 'top-left'], // Diagonale → bottom-left, haut → bottom-left, droite → top-left
-        'right': ['left'],
-        'bottom-right': ['top-left', 'top-left', 'bottom-left'], // Diagonale → top-left, bas → top-left, droite → bottom-left
-        'bottom': ['top'],
-        'bottom-left': ['top-right', 'top-right', 'bottom-right'], // Diagonale → top-right, bas → top-right, gauche → bottom-right
-        'left': ['right']
+        'top-left': [['bottom-right'], ['bottom-right', 'bottom'], ['top-right', 'right']],
+        'top': [['bottom']],
+        'top-right': [['bottom-left'], ['bottom-left', 'bottom'], ['top-left', 'left']],
+        'right': [['left']],
+        'bottom-right': [['top-left'], ['top-left', 'top'], ['bottom-left', 'left']],
+        'bottom': [['top']],
+        'bottom-left': [['top-right'], ['top-right', 'top'], ['bottom-right', 'right']],
+        'left': [['right']]
     };
 
     // Vérifier les cases correspondant à start et end
@@ -265,13 +266,13 @@ function checkPatterns(startX, startY) {
         const nx = startX + dx;
         const ny = startY + dy;
         const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
-        return { x: nx, y: ny, valid, expectedEnd: opposites[piece.start][idx] };
+        return { x: nx, y: ny, valid, expectedEnds: opposites[piece.start][idx] };
     });
     const endNeighbors = directions[piece.end].map(([dx, dy], idx) => {
         const nx = startX + dx;
         const ny = startY + dy;
         const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
-        return { x: nx, y: ny, valid, expectedStart: opposites[piece.end][idx] };
+        return { x: nx, y: ny, valid, expectedStarts: opposites[piece.end][idx] };
     });
 
     // Vérifier si au moins une case est occupée pour start et end
@@ -280,7 +281,12 @@ function checkPatterns(startX, startY) {
     if (!startOccupied || !endOccupied) return;
 
     // Explorer les chemins à partir de end
-    const pathsToExplore = endNeighbors.filter(n => n.valid && grid[n.y] && grid[n.y][n.x] && grid[n.y][n.x].start === n.expectedStart);
+    const pathsToExplore = endNeighbors.filter(n => {
+        if (!n.valid || !grid[n.y] || !grid[n.y][n.x]) return false;
+        const neighborPiece = grid[n.y][n.x];
+        return n.expectedStarts.includes(neighborPiece.start) || n.expectedStarts.includes(neighborPiece.end);
+    });
+
     for (const startNeighbor of pathsToExplore) {
         let currentX = startNeighbor.x;
         let currentY = startNeighbor.y;
@@ -300,30 +306,44 @@ function checkPatterns(startX, startY) {
             path.push([currentX, currentY]);
 
             const currentPiece = grid[currentY][currentX];
-            const expectedStart = opposites[currentDir][0]; // Prendre la première correspondance
-            let nextDir, nextX, nextY;
+            let nextDir;
 
-            if (currentPiece.start === expectedStart) {
+            // Déterminer la direction suivante
+            if (currentPiece.start === opposites[currentDir][0]) {
                 nextDir = currentPiece.end;
-            } else if (currentPiece.end === expectedStart) {
+            } else if (currentPiece.end === opposites[currentDir][0]) {
                 nextDir = currentPiece.start;
             } else {
-                break; // Pas de connexion
+                // Vérifier les autres directions possibles pour les coins
+                const possibleDirs = [currentPiece.start, currentPiece.end];
+                const nextNeighbors = possibleDirs.flatMap(dir =>
+                    directions[dir].map(([dx, dy], idx) => {
+                        const nx = currentX + dx;
+                        const ny = currentY + dy;
+                        const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
+                        return { x: nx, y: ny, valid, expectedStarts: opposites[dir][idx], dir };
+                    })
+                );
+                const nextNeighbor = nextNeighbors.find(n => n.valid && grid[n.y] && grid[n.y][n.x] && (n.expectedStarts.includes(grid[n.y][n.x].start) || n.expectedStarts.includes(grid[n.y][n.x].end)));
+                if (!nextNeighbor) break;
+                currentX = nextNeighbor.x;
+                currentY = nextNeighbor.y;
+                nextDir = nextNeighbor.dir;
             }
 
             const nextNeighbors = directions[nextDir].map(([dx, dy], idx) => {
                 const nx = currentX + dx;
                 const ny = currentY + dy;
                 const valid = nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize;
-                return { x: nx, y: ny, valid, expectedStart: opposites[nextDir][idx] };
+                return { x: nx, y: ny, valid, expectedStarts: opposites[nextDir][idx], dir: nextDir };
             });
 
-            const nextNeighbor = nextNeighbors.find(n => n.valid && grid[n.y] && grid[n.y][n.x] && grid[n.y][n.x].start === n.expectedStart);
+            const nextNeighbor = nextNeighbors.find(n => n.valid && grid[n.y] && grid[n.y][n.x] && (n.expectedStarts.includes(grid[n.y][n.x].start) || n.expectedStarts.includes(grid[n.y][n.x].end)));
             if (!nextNeighbor) break; // Pas de connexion suivante
 
             currentX = nextNeighbor.x;
             currentY = nextNeighbor.y;
-            currentDir = nextDir;
+            currentDir = nextNeighbor.dir;
         }
     }
 }
