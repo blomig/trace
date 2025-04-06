@@ -240,6 +240,7 @@
         }
 
 // Nouvelle méthode de détection des motifs
+        // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -406,7 +407,7 @@ function checkPatterns(startX, startY) {
     if (path.length > 0) {
         animatePattern(path);
     }
-}
+}  
         // Animer le motif détecté
         function animatePattern(path) {
             path.forEach(([x, y]) => {
