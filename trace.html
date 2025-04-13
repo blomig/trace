@@ -260,14 +260,14 @@ function checkPatterns(startX, startY) {
         'left': [[-1, 0]] // Gauche
     };
     const opposites = {
-        'top-left': { diagonal: 'bottom-right', up: 'bottom-left', left: 'top-right' },
+        'top-left': { diagonal: 'bottom-right', up: 'bottom-left', left: ['top-right', 'right'] },
         'top': { up: 'bottom' },
-        'top-right': { diagonal: 'bottom-left', up: 'bottom-right', right: 'top-left' },
-        'right': { right: 'left' },
-        'bottom-right': { diagonal: 'top-left', down: 'top-right', right: 'bottom-left' },
+        'top-right': { diagonal: 'bottom-left', up: 'bottom-right', right: ['top-left', 'left'] },
+        'right': { right: ['left', 'top-left', 'bottom-left'] },
+        'bottom-right': { diagonal: 'top-left', down: 'top-right', right: ['bottom-left', 'left'] },
         'bottom': { down: 'top' },
-        'bottom-left': { diagonal: 'top-right', down: 'top-left', left: 'bottom-right' },
-        'left': { left: 'right' }
+        'bottom-left': { diagonal: 'top-right', down: 'top-left', left: ['bottom-right', 'right'] },
+        'left': { left: ['right', 'top-right', 'bottom-right'] }
     };
     const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
 
@@ -316,12 +316,18 @@ function checkPatterns(startX, startY) {
                     if (!neighborTrait) return;
                     const neighborPoints = new Set(neighborTrait.segment);
                     const oppositePoints = opposites[point] || {};
-                    const oppositePoint = idx === 0 ? oppositePoints.diagonal : (idx === 1 ? oppositePoints.up || oppositePoints.down : oppositePoints.left || oppositePoints.right);
-                    if (oppositePoint && piecePoints.has(point) && neighborPoints.has(oppositePoint)) {
-                        const node1 = `${point}@${pieceKey}`;
-                        const node2 = `${oppositePoint}@${neighborKey}`;
-                        graph.get(node1).add(node2);
-                        graph.get(node2).add(node1);
+                    const oppositePointList = Array.isArray(oppositePoints[idx === 0 ? 'diagonal' : (idx === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right))])
+                        ? oppositePoints[idx === 0 ? 'diagonal' : (idx === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right))]
+                        : [oppositePoints[idx === 0 ? 'diagonal' : (idx === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right))]];
+                    if (oppositePointList && piecePoints.has(point)) {
+                        for (let oppositePoint of oppositePointList) {
+                            if (oppositePoint && neighborPoints.has(oppositePoint)) {
+                                const node1 = `${point}@${pieceKey}`;
+                                const node2 = `${oppositePoint}@${neighborKey}`;
+                                graph.get(node1).add(node2);
+                                graph.get(node2).add(node1);
+                            }
+                        }
                     }
                 }
             });
@@ -344,7 +350,7 @@ function checkPatterns(startX, startY) {
                     if (dfs(neighbor, startNode)) {
                         return true;
                     }
-                } else if (neighbor === startNode && path.length >= 4) { // Cycle fermé trouvé (au moins 2 pièces)
+                } else if (neighbor === startNode && path.length >= 3) { // Cycle fermé trouvé (au moins 3 points pour un triangle)
                     path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
                     return true;
                 }
@@ -394,8 +400,7 @@ function checkPatterns(startX, startY) {
     if (path.length > 0) {
         animatePattern(path);
     }
-}        
-        // Animer le motif détecté
+}        // Animer le motif détecté
         function animatePattern(path) {
             path.forEach(([x, y]) => {
                 const cell = gridElement.children[y * gridSize + x];
