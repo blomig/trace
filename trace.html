@@ -240,7 +240,7 @@
         }
 
 // Nouvelle méthode de détection des motifs
-       // Nouvelle méthode de détection des motifs
+        // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -366,7 +366,7 @@ function checkPatterns(startX, startY) {
             visited.clear();
             path.length = 0;
             parent.clear();
-            if (dfs(startPoint, startNode)) {
+            if (dfs(startPoint, startPoint)) {
                 return path;
             }
         }
@@ -381,6 +381,38 @@ function checkPatterns(startX, startY) {
     }
 
     console.log("Cycle found:", cycle);
+
+    // Vérifier que le cycle forme une boucle continue des traits
+    const pointsPath = [];
+    for (let i = 0; i < cycle.length - 1; i++) {
+        const node = cycle[i];
+        const [point, _] = node.split('@');
+        pointsPath.push(point);
+    }
+
+    let isValidCycle = true;
+    for (let i = 0; i < pointsPath.length; i++) {
+        const currentPoint = pointsPath[i];
+        const nextPoint = pointsPath[(i + 1) % pointsPath.length];
+        const oppositePoints = opposites[currentPoint] || {};
+        let oppositePointFound = false;
+        for (let direction of ['diagonal', 'up', 'down', 'left', 'right']) {
+            const oppositePointList = Array.isArray(oppositePoints[direction]) ? oppositePoints[direction] : (oppositePoints[direction] ? [oppositePoints[direction]] : []);
+            if (oppositePointList.includes(nextPoint)) {
+                oppositePointFound = true;
+                break;
+            }
+        }
+        if (!oppositePointFound) {
+            isValidCycle = false;
+            break;
+        }
+    }
+
+    if (!isValidCycle) {
+        console.log("Invalid cycle: points do not form a continuous loop", pointsPath);
+        return;
+    }
 
     // Extraire les pièces impliquées dans le cycle
     const piecesInCycle = new Set();
