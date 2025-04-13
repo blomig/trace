@@ -241,6 +241,7 @@
 
 // Nouvelle méthode de détection des motifs
 // Nouvelle méthode de détection des motifs
+        // Nouvelle méthode de détection des motifs
 function checkPatterns(startX, startY) {
     console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
     const piece = grid[startY][startX];
@@ -260,13 +261,13 @@ function checkPatterns(startX, startY) {
         'left': [[-1, 0]] // Gauche
     };
     const opposites = {
-        'top-left': { diagonal: 'bottom-right', up: 'bottom-left', left: ['top-right', 'right'] },
+        'top-left': { diagonal: 'bottom-right', up: ['bottom-left', 'bottom'], left: ['top-right', 'right'] },
         'top': { up: 'bottom' },
-        'top-right': { diagonal: 'bottom-left', up: 'bottom-right', right: ['top-left', 'left'] },
+        'top-right': { diagonal: 'bottom-left', up: ['bottom-right', 'bottom'], right: ['top-left', 'left'] },
         'right': { right: ['left', 'top-left', 'bottom-left'] },
-        'bottom-right': { diagonal: 'top-left', down: 'top-right', right: ['bottom-left', 'left'] },
+        'bottom-right': { diagonal: 'top-left', down: ['top-right', 'top'], right: ['bottom-left', 'left'] },
         'bottom': { down: 'top' },
-        'bottom-left': { diagonal: 'top-right', down: 'top-left', left: ['bottom-right', 'right'] },
+        'bottom-left': { diagonal: 'top-right', down: ['top-left', 'top'], left: ['bottom-right', 'right'] },
         'left': { left: ['right', 'top-right', 'bottom-right'] }
     };
     const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
@@ -350,7 +351,7 @@ function checkPatterns(startX, startY) {
                     if (dfs(neighbor, startNode)) {
                         return true;
                     }
-                } else if (neighbor === startNode && path.length >= 3) { // Cycle fermé trouvé (au moins 3 points pour un triangle)
+                } else if (neighbor === startNode && path.length >= 3) { // Cycle fermé trouvé (au moins 3 points)
                     path.push(neighbor); // Ajouter le nœud de départ pour fermer le cycle
                     return true;
                 }
@@ -400,7 +401,9 @@ function checkPatterns(startX, startY) {
     if (path.length > 0) {
         animatePattern(path);
     }
-}        // Animer le motif détecté
+}
+        
+        // Animer le motif détecté
         function animatePattern(path) {
             path.forEach(([x, y]) => {
                 const cell = gridElement.children[y * gridSize + x];
