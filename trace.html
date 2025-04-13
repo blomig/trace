@@ -277,8 +277,7 @@ function checkPatterns(startX, startY) {
         for (let x = 0; x < gridSize; x++) {
             if (!grid[y][x]) continue;
             const piece = grid[y][x];
-            const segment = [piece.start, piece.end].sort(); // Normaliser le segment (par exemple, ['top-right', 'bottom-right'])
-            traits.push({ x, y, segment });
+            traits.push({ x, y, start: piece.start, end: piece.end });
         }
     }
 
@@ -286,11 +285,10 @@ function checkPatterns(startX, startY) {
     const graph = new Map();
     const pointToPosition = new Map();
     for (let trait of traits) {
-        const { x, y, segment } = trait;
+        const { x, y, start, end } = trait;
         const pieceKey = `${x},${y}`;
-        const [point1, point2] = segment;
-        const node1 = `${point1}@${pieceKey}`;
-        const node2 = `${point2}@${pieceKey}`;
+        const node1 = `${start}@${pieceKey}`;
+        const node2 = `${end}@${pieceKey}`;
         graph.set(node1, new Set());
         graph.set(node2, new Set());
         pointToPosition.set(node1, [x, y]);
@@ -301,9 +299,9 @@ function checkPatterns(startX, startY) {
 
     // Ajouter les connexions inter-pièce
     for (let i = 0; i < traits.length; i++) {
-        const { x, y, segment } = traits[i];
+        const { x, y, start, end } = traits[i];
         const pieceKey = `${x},${y}`;
-        const piecePoints = new Set(segment);
+        const piecePoints = new Set([start, end]);
 
         pointsList.forEach(point => {
             const dirList = directions[point] || [];
@@ -314,7 +312,7 @@ function checkPatterns(startX, startY) {
                     const neighborKey = `${nx},${ny}`;
                     const neighborTrait = traits.find(t => t.x === nx && t.y === ny);
                     if (!neighborTrait) return;
-                    const neighborPoints = new Set(neighborTrait.segment);
+                    const neighborPoints = new Set([neighborTrait.start, neighborTrait.end]);
                     const oppositePoints = opposites[point] || {};
                     const oppositePointList = Array.isArray(oppositePoints[idx === 0 ? 'diagonal' : (idx === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right))])
                         ? oppositePoints[idx === 0 ? 'diagonal' : (idx === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right))]
@@ -368,7 +366,7 @@ function checkPatterns(startX, startY) {
             visited.clear();
             path.length = 0;
             parent.clear();
-            if (dfs(startPoint, startPoint)) {
+            if (dfs(startPoint, startNode)) {
                 return path;
             }
         }
