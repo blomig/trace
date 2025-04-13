@@ -12,6 +12,11 @@
             align-items: center;
             background-color: #f0f0f0;
         }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         #grid {
             display: grid;
             grid-template-columns: repeat(7, 50px);
@@ -24,52 +29,43 @@
             height: 50px;
             background-color: white;
             border: 1px solid black;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            text-align: center;
             cursor: pointer;
         }
-        .cell:hover {
+        .cell.pattern {
+            background-color: #90ee90; /* Vert clair pour les motifs détectés */
+        }
+        #inventory {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .piece {
+            width: 50px;
+            height: 50px;
+            border: 1px solid black;
+            cursor: pointer;
             background-color: #e0e0e0;
         }
-        .pattern {
-            background-color: #90ee90; /* Vert clair pour les motifs détectés */
+        .piece.selected {
+            border: 2px solid blue;
         }
         #controls {
             margin: 20px;
         }
-        #controls select, #controls button {
+        #controls button {
             margin: 0 5px;
         }
     </style>
 </head>
 <body>
     <h1>Pattern Detection Game</h1>
-    <div id="grid"></div>
-    <div id="controls">
-        <select id="startPoint">
-            <option value="top-left">Top-Left</option>
-            <option value="top">Top</option>
-            <option value="top-right">Top-Right</option>
-            <option value="right">Right</option>
-            <option value="bottom-right">Bottom-Right</option>
-            <option value="bottom">Bottom</option>
-            <option value="bottom-left">Bottom-Left</option>
-            <option value="left">Left</option>
-        </select>
-        <select id="endPoint">
-            <option value="top-left">Top-Left</option>
-            <option value="top">Top</option>
-            <option value="top-right">Top-Right</option>
-            <option value="right">Right</option>
-            <option value="bottom-right">Bottom-Right</option>
-            <option value="bottom">Bottom</option>
-            <option value="bottom-left">Bottom-Left</option>
-            <option value="left">Left</option>
-        </select>
-        <button onclick="clearGrid()">Clear Grid</button>
+    <div id="game-container">
+        <div id="grid"></div>
+        <div id="inventory"></div>
+        <div id="controls">
+            <button onclick="nextTurn()">Next Turn</button>
+            <button onclick="clearGrid()">Clear Grid</button>
+        </div>
     </div>
 
     <script>
@@ -81,6 +77,36 @@
 
         // Liste des points possibles
         const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
+
+        // Liste des traits possibles (start, end)
+        const possibleTraits = [
+            { start: 'top-left', end: 'left' },
+            { start: 'top-right', end: 'right' },
+            { start: 'bottom-left', end: 'left' },
+            { start: 'bottom-right', end: 'right' },
+            { start: 'top', end: 'right' },
+            { start: 'left', end: 'bottom' },
+            { start: 'bottom', end: 'right' },
+            { start: 'left', end: 'top' },
+            { start: 'top-right', end: 'bottom-right' },
+            { start: 'bottom-left', end: 'top-left' }
+        ];
+
+        // Positions des points dans une cellule (pour le dessin)
+        const pointPositions = {
+            'top-left': { x: 5, y: 5 },
+            'top': { x: 25, y: 5 },
+            'top-right': { x: 45, y: 5 },
+            'right': { x: 45, y: 25 },
+            'bottom-right': { x: 45, y: 45 },
+            'bottom': { x: 25, y: 45 },
+            'bottom-left': { x: 5, y: 45 },
+            'left': { x: 5, y: 25 }
+        };
+
+        // Pièces disponibles à chaque tour
+        let availablePieces = [];
+        let selectedPieceIndex = null;
 
         // Directions possibles pour chaque point
         const directions = {
@@ -106,6 +132,20 @@
             'left': { left: ['right', 'top-right', 'bottom-right'] }
         };
 
+        // Fonction pour dessiner un trait dans un canvas
+        function drawTrait(canvas, start, end) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            const startPos = pointPositions[start];
+            const endPos = pointPositions[end];
+            ctx.moveTo(startPos.x, startPos.y);
+            ctx.lineTo(endPos.x, endPos.y);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
         // Fonction pour afficher la grille dans l'interface HTML
         function renderGrid() {
             const gridElement = document.getElementById('grid');
@@ -117,26 +157,80 @@
                     cellElement.className = 'cell';
                     cellElement.dataset.x = x;
                     cellElement.dataset.y = y;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 50;
+                    canvas.height = 50;
+                    cellElement.appendChild(canvas);
+
                     if (grid[y][x]) {
                         const piece = grid[y][x];
-                        cellElement.textContent = `${piece.start}-${piece.end}`;
+                        drawTrait(canvas, piece.start, piece.end);
                         if (piece.isPartOfPattern) {
                             cellElement.classList.add('pattern');
                         }
                     }
+
                     cellElement.addEventListener('click', handleCellClick);
                     gridElement.appendChild(cellElement);
                 }
             }
         }
 
+        // Fonction pour afficher les pièces disponibles
+        function renderInventory() {
+            const inventoryElement = document.getElementById('inventory');
+            inventoryElement.innerHTML = ''; // Vider l'inventaire
+
+            availablePieces.forEach((piece, index) => {
+                const pieceElement = document.createElement('div');
+                pieceElement.className = 'piece';
+                if (index === selectedPieceIndex) {
+                    pieceElement.classList.add('selected');
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 50;
+                canvas.height = 50;
+                drawTrait(canvas, piece.start, piece.end);
+                pieceElement.appendChild(canvas);
+
+                pieceElement.addEventListener('click', () => {
+                    selectedPieceIndex = index;
+                    renderInventory();
+                });
+
+                inventoryElement.appendChild(pieceElement);
+            });
+        }
+
+        // Fonction pour tirer 5 pièces au hasard
+        function drawPieces() {
+            availablePieces = [];
+            for (let i = 0; i < 5; i++) {
+                const randomTrait = possibleTraits[Math.floor(Math.random() * possibleTraits.length)];
+                availablePieces.push({ ...randomTrait });
+            }
+            selectedPieceIndex = null;
+            renderInventory();
+        }
+
         // Gestionnaire de clic sur une cellule
         function handleCellClick(event) {
+            if (selectedPieceIndex === null) {
+                console.log("No piece selected");
+                return;
+            }
+
             const x = parseInt(event.target.dataset.x);
             const y = parseInt(event.target.dataset.y);
-            const start = document.getElementById('startPoint').value;
-            const end = document.getElementById('endPoint').value;
-            placePiece(x, y, start, end);
+            const piece = availablePieces[selectedPieceIndex];
+            if (placePiece(x, y, piece.start, piece.end)) {
+                // Retirer la pièce utilisée de l'inventaire
+                availablePieces.splice(selectedPieceIndex, 1);
+                selectedPieceIndex = null;
+                renderInventory();
+            }
         }
 
         // Fonction pour placer une pièce sur la grille
@@ -323,14 +417,23 @@
             // L'animation est déjà gérée par la mise à jour de isPartOfPattern et renderGrid
         }
 
+        // Fonction pour réinitialiser la grille et passer au tour suivant
+        function nextTurn() {
+            drawPieces();
+        }
+
         // Fonction pour réinitialiser la grille
         function clearGrid() {
             grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+            availablePieces = [];
+            selectedPieceIndex = null;
             renderGrid();
+            renderInventory();
         }
 
-        // Afficher la grille initiale
+        // Afficher la grille initiale et tirer les premières pièces
         renderGrid();
+        drawPieces();
     </script>
 </body>
 </html>
