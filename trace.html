@@ -1,323 +1,336 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trace</title>
+    <title>Pattern Detection Game</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
-            margin: 0;
             background-color: #f0f0f0;
-        }
-        #game-container {
-            text-align: center;
         }
         #grid {
             display: grid;
-            grid-template-columns: repeat(7, 40px);
-            grid-gap: 1px;
-            background-color: #000;
-            padding: 1px;
+            grid-template-columns: repeat(7, 50px);
+            grid-gap: 2px;
+            background-color: #ccc;
+            padding: 5px;
         }
         .cell {
-            width: 40px;
-            height: 40px;
-            background-color: #fff !important;
-            position: relative;
-            opacity: 1;
-        }
-        .error {
-            animation: error 0.5s;
-        }
-        @keyframes error {
-            50% { background-color: red; }
-        }
-        #score {
-            margin-top: 20px;
-            font-size: 24px;
-        }
-        #next-pieces {
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            border: 1px solid black;
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .piece {
-            width: 40px;
-            height: 40px;
-            background-color: #fff;
-            border: 1px solid #000;
-            position: relative;
+            font-size: 10px;
+            text-align: center;
             cursor: pointer;
         }
-        .selected {
-            border: 2px solid blue;
+        .cell:hover {
+            background-color: #e0e0e0;
         }
-        #hiscores-btn {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
+        .pattern {
+            background-color: #90ee90; /* Vert clair pour les motifs détectés */
         }
-        canvas {
-            display: block;
+        #controls {
+            margin: 20px;
         }
-        .fade-out {
-            animation: fadeOut 1s forwards;
-        }
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-        .highlight {
-            animation: highlight 1s infinite;
-        }
-        @keyframes highlight {
-            50% { opacity: 0; }
+        #controls select, #controls button {
+            margin: 0 5px;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="grid"></div>
-        <div id="score">Score : 0</div>
-        <div id="next-pieces"></div>
-        <button id="hiscores-btn">Hiscores</button>
+    <h1>Pattern Detection Game</h1>
+    <div id="grid"></div>
+    <div id="controls">
+        <select id="startPoint">
+            <option value="top-left">Top-Left</option>
+            <option value="top">Top</option>
+            <option value="top-right">Top-Right</option>
+            <option value="right">Right</option>
+            <option value="bottom-right">Bottom-Right</option>
+            <option value="bottom">Bottom</option>
+            <option value="bottom-left">Bottom-Left</option>
+            <option value="left">Left</option>
+        </select>
+        <select id="endPoint">
+            <option value="top-left">Top-Left</option>
+            <option value="top">Top</option>
+            <option value="top-right">Top-Right</option>
+            <option value="right">Right</option>
+            <option value="bottom-right">Bottom-Right</option>
+            <option value="bottom">Bottom</option>
+            <option value="bottom-left">Bottom-Left</option>
+            <option value="left">Left</option>
+        </select>
+        <button onclick="clearGrid()">Clear Grid</button>
     </div>
 
     <script>
-       // Taille de la grille
-const gridSize = 7;
+        // Taille de la grille
+        const gridSize = 7;
 
-// Initialisation de la grille (7x7)
-let grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+        // Initialisation de la grille (7x7)
+        let grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
 
-// Fonction pour placer une pièce sur la grille
-function placePiece(x, y, start, end) {
-    if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) {
-        console.error(`Invalid position: (${x}, ${y})`);
-        return false;
-    }
-    if (grid[y][x]) {
-        console.error(`Position (${x}, ${y}) already occupied`);
-        return false;
-    }
-    if (!pointsList.includes(start) || !pointsList.includes(end)) {
-        console.error(`Invalid start or end point: start=${start}, end=${end}`);
-        return false;
-    }
+        // Liste des points possibles
+        const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
 
-    // Placer la pièce dans la grille
-    grid[y][x] = { start, end };
-    console.log(`Placed piece at (${x}, ${y}) with start=${start}, end=${end}`);
+        // Directions possibles pour chaque point
+        const directions = {
+            'top-left': [[-1, -1], [0, -1], [-1, 0]], // Diagonale, haut, gauche
+            'top': [[0, -1]], // Haut
+            'top-right': [[1, -1], [0, -1], [1, 0]], // Diagonale, haut, droite
+            'right': [[1, 0]], // Droite
+            'bottom-right': [[1, 1], [0, 1], [1, 0]], // Diagonale, bas, droite
+            'bottom': [[0, 1]], // Bas
+            'bottom-left': [[-1, 1], [0, 1], [-1, 0]], // Diagonale, bas, gauche
+            'left': [[-1, 0]] // Gauche
+        };
 
-    // Vérifier les motifs après placement
-    checkPatterns(x, y);
-    return true;
-}
+        // Points opposés pour chaque direction
+        const opposites = {
+            'top-left': { diagonal: ['bottom-right'], up: ['bottom-left', 'bottom'], left: ['top-right', 'right'] },
+            'top': { up: ['bottom'] },
+            'top-right': { diagonal: ['bottom-left'], up: ['bottom-right', 'bottom'], right: ['top-left', 'left'] },
+            'right': { right: ['left', 'top-left', 'bottom-left'] },
+            'bottom-right': { diagonal: ['top-left'], down: ['top-right', 'top'], right: ['bottom-left', 'left'] },
+            'bottom': { down: ['top'] },
+            'bottom-left': { diagonal: ['top-right'], down: ['top-left', 'top'], left: ['bottom-right', 'right'] },
+            'left': { left: ['right', 'top-right', 'bottom-right'] }
+        };
 
-// Liste des points possibles
-const pointsList = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
+        // Fonction pour afficher la grille dans l'interface HTML
+        function renderGrid() {
+            const gridElement = document.getElementById('grid');
+            gridElement.innerHTML = ''; // Vider la grille
 
-// Directions possibles pour chaque point
-const directions = {
-    'top-left': [[-1, -1], [0, -1], [-1, 0]], // Diagonale, haut, gauche
-    'top': [[0, -1]], // Haut
-    'top-right': [[1, -1], [0, -1], [1, 0]], // Diagonale, haut, droite
-    'right': [[1, 0]], // Droite
-    'bottom-right': [[1, 1], [0, 1], [1, 0]], // Diagonale, bas, droite
-    'bottom': [[0, 1]], // Bas
-    'bottom-left': [[-1, 1], [0, 1], [-1, 0]], // Diagonale, bas, gauche
-    'left': [[-1, 0]] // Gauche
-};
-
-// Points opposés pour chaque direction
-const opposites = {
-    'top-left': { diagonal: ['bottom-right'], up: ['bottom-left', 'bottom'], left: ['top-right', 'right'] },
-    'top': { up: ['bottom'] },
-    'top-right': { diagonal: ['bottom-left'], up: ['bottom-right', 'bottom'], right: ['top-left', 'left'] },
-    'right': { right: ['left', 'top-left', 'bottom-left'] },
-    'bottom-right': { diagonal: ['top-left'], down: ['top-right', 'top'], right: ['bottom-left', 'left'] },
-    'bottom': { down: ['top'] },
-    'bottom-left': { diagonal: ['top-right'], down: ['top-left', 'top'], left: ['bottom-right', 'right'] },
-    'left': { left: ['right', 'top-right', 'bottom-right'] }
-};
-
-// Fonction pour vérifier les motifs après placement d'une pièce
-function checkPatterns(startX, startY) {
-    console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
-    const piece = grid[startY][startX];
-    if (!piece) {
-        console.error("No piece found at", startX, startY);
-        return;
-    }
-    if (!piece.start || !piece.end) {
-        console.error(`Invalid piece at (${startX}, ${startY}): start=${piece.start}, end=${piece.end}`);
-        return;
-    }
-
-    // Stocker les traits posés dans une liste
-    const traits = [];
-    for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-            if (!grid[y][x]) continue;
-            const piece = grid[y][x];
-            if (!piece.start || !piece.end) {
-                console.error(`Invalid piece at (${x}, ${y}): start=${piece.start}, end=${piece.end}`);
-                continue;
-            }
-            traits.push({ x, y, start: piece.start, end: piece.end });
-        }
-    }
-
-    console.log("Traits:", traits);
-
-    // Fonction pour trouver un cycle fermé à partir d'un point de départ
-    function findCycle(startNode) {
-        const visited = new Set();
-        const parent = new Map();
-        const path = [];
-        const positionsPath = [];
-
-        function dfs(node, startNode) {
-            visited.add(node);
-            path.push(node);
-
-            const [currentPoint, pieceKey] = node.split('@');
-            const [x, y] = pieceKey.split(',').map(Number);
-            positionsPath.push(pieceKey);
-
-            // Trouver les directions possibles pour le point actuel
-            const dirList = directions[currentPoint] || [];
-            let foundNext = false;
-
-            for (let [dx, dy] of dirList) {
-                const nx = x + dx;
-                const ny = y + dy;
-                if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
-                    const neighborKey = `${nx},${ny}`;
-                    const neighborTrait = traits.find(t => t.x === nx && t.y === ny);
-                    if (!neighborTrait) continue;
-                    const neighborPoints = new Set([neighborTrait.start, neighborTrait.end]);
-                    const oppositePoints = opposites[currentPoint] || {};
-                    const direction = dirList.indexOf([dx, dy]) === 0 ? 'diagonal' : (dirList.indexOf([dx, dy]) === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right));
-                    const oppositePointList = Array.isArray(oppositePoints[direction]) ? oppositePoints[direction] : (oppositePoints[direction] ? [oppositePoints[direction]] : []);
-                    if (oppositePointList) {
-                        for (let oppositePoint of oppositePointList) {
-                            if (oppositePoint && neighborPoints.has(oppositePoint)) {
-                                const nextNode = `${oppositePoint}@${neighborKey}`;
-                                if (!visited.has(nextNode)) {
-                                    parent.set(nextNode, node);
-                                    if (dfs(nextNode, startNode)) {
-                                        foundNext = true;
-                                        break;
-                                    }
-                                } else if (nextNode === startNode && path.length >= 3) { // Cycle fermé trouvé
-                                    path.push(nextNode);
-                                    positionsPath.push(neighborKey);
-                                    foundNext = true;
-                                    break;
-                                }
-                            }
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const cellElement = document.createElement('div');
+                    cellElement.className = 'cell';
+                    cellElement.dataset.x = x;
+                    cellElement.dataset.y = y;
+                    if (grid[y][x]) {
+                        const piece = grid[y][x];
+                        cellElement.textContent = `${piece.start}-${piece.end}`;
+                        if (piece.isPartOfPattern) {
+                            cellElement.classList.add('pattern');
                         }
                     }
-                    if (foundNext) break;
+                    cellElement.addEventListener('click', handleCellClick);
+                    gridElement.appendChild(cellElement);
+                }
+            }
+        }
+
+        // Gestionnaire de clic sur une cellule
+        function handleCellClick(event) {
+            const x = parseInt(event.target.dataset.x);
+            const y = parseInt(event.target.dataset.y);
+            const start = document.getElementById('startPoint').value;
+            const end = document.getElementById('endPoint').value;
+            placePiece(x, y, start, end);
+        }
+
+        // Fonction pour placer une pièce sur la grille
+        function placePiece(x, y, start, end) {
+            if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) {
+                console.error(`Invalid position: (${x}, ${y})`);
+                return false;
+            }
+            if (grid[y][x]) {
+                console.error(`Position (${x}, ${y}) already occupied`);
+                return false;
+            }
+            if (!pointsList.includes(start) || !pointsList.includes(end)) {
+                console.error(`Invalid start or end point: start=${start}, end=${end}`);
+                return false;
+            }
+
+            // Placer la pièce dans la grille
+            grid[y][x] = { start, end, isPartOfPattern: false };
+            console.log(`Placed piece at (${x}, ${y}) with start=${start}, end=${end}`);
+
+            // Afficher la grille après placement
+            renderGrid();
+
+            // Vérifier les motifs après placement
+            checkPatterns(x, y);
+            return true;
+        }
+
+        // Fonction pour vérifier les motifs après placement d'une pièce
+        function checkPatterns(startX, startY) {
+            console.log(`checkPatterns called with startX=${startX}, startY=${startY}`);
+            const piece = grid[startY][startX];
+            if (!piece) {
+                console.error("No piece found at", startX, startY);
+                return;
+            }
+            if (!piece.start || !piece.end) {
+                console.error(`Invalid piece at (${startX}, ${startY}): start=${piece.start}, end=${piece.end}`);
+                return;
+            }
+
+            // Stocker les traits posés dans une liste
+            const traits = [];
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    if (!grid[y][x]) continue;
+                    const piece = grid[y][x];
+                    if (!piece.start || !piece.end) {
+                        console.error(`Invalid piece at (${x}, ${y}): start=${piece.start}, end=${piece.end}`);
+                        continue;
+                    }
+                    traits.push({ x, y, start: piece.start, end: piece.end });
                 }
             }
 
-            if (!foundNext) {
-                path.pop();
-                positionsPath.pop();
-                visited.delete(node);
+            console.log("Traits:", traits);
+
+            // Fonction pour trouver un cycle fermé à partir d'un point de départ
+            function findCycle(startNode) {
+                const visited = new Set();
+                const parent = new Map();
+                const path = [];
+                const positionsPath = [];
+
+                function dfs(node, startNode) {
+                    visited.add(node);
+                    path.push(node);
+
+                    const [currentPoint, pieceKey] = node.split('@');
+                    const [x, y] = pieceKey.split(',').map(Number);
+                    positionsPath.push(pieceKey);
+
+                    // Trouver les directions possibles pour le point actuel
+                    const dirList = directions[currentPoint] || [];
+                    let foundNext = false;
+
+                    for (let [dx, dy] of dirList) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && grid[ny][nx]) {
+                            const neighborKey = `${nx},${ny}`;
+                            const neighborTrait = traits.find(t => t.x === nx && t.y === ny);
+                            if (!neighborTrait) continue;
+                            const neighborPoints = new Set([neighborTrait.start, neighborTrait.end]);
+                            const oppositePoints = opposites[currentPoint] || {};
+                            const direction = dirList.indexOf([dx, dy]) === 0 ? 'diagonal' : (dirList.indexOf([dx, dy]) === 1 ? (oppositePoints.up || oppositePoints.down) : (oppositePoints.left || oppositePoints.right));
+                            const oppositePointList = Array.isArray(oppositePoints[direction]) ? oppositePoints[direction] : (oppositePoints[direction] ? [oppositePoints[direction]] : []);
+                            if (oppositePointList) {
+                                for (let oppositePoint of oppositePointList) {
+                                    if (oppositePoint && neighborPoints.has(oppositePoint)) {
+                                        const nextNode = `${oppositePoint}@${neighborKey}`;
+                                        if (!visited.has(nextNode)) {
+                                            parent.set(nextNode, node);
+                                            if (dfs(nextNode, startNode)) {
+                                                foundNext = true;
+                                                break;
+                                            }
+                                        } else if (nextNode === startNode && path.length >= 3) { // Cycle fermé trouvé
+                                            path.push(nextNode);
+                                            positionsPath.push(neighborKey);
+                                            foundNext = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (foundNext) break;
+                        }
+                    }
+
+                    if (!foundNext) {
+                        path.pop();
+                        positionsPath.pop();
+                        visited.delete(node);
+                    }
+                    return foundNext;
+                }
+
+                // Essayer de trouver un cycle à partir du point de départ
+                visited.clear();
+                path.length = 0;
+                positionsPath.length = 0;
+                parent.clear();
+                if (dfs(startNode, startNode)) {
+                    return positionsPath;
+                }
+
+                return null;
             }
-            return foundNext;
+
+            // Essayer de trouver tous les cycles possibles à partir des deux points de la pièce posée
+            const startPieceKey = `${startX},${startY}`;
+            const startPoints = [`${piece.start}@${startPieceKey}`, `${piece.end}@${startPieceKey}`];
+            const allPaths = [];
+
+            for (let startPoint of startPoints) {
+                let cycle = findCycle(startPoint);
+                while (cycle) {
+                    // Ajouter le cycle trouvé à la liste des chemins
+                    allPaths.push(cycle.slice(0, -1)); // Exclure la dernière entrée (répétition de la première)
+                    // Recommencer la recherche pour trouver d'autres cycles
+                    cycle = findCycle(startPoint);
+                }
+            }
+
+            // Si aucun cycle n'est trouvé, sortir
+            if (allPaths.length === 0) {
+                console.log("No cycles found");
+                return;
+            }
+
+            console.log("Cycles found:", allPaths);
+
+            // Traiter chaque cycle trouvé
+            for (let path of allPaths) {
+                // Marquer les positions impliquées dans un motif
+                const uniquePositions = new Set(path);
+                uniquePositions.forEach(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    if (grid[y][x]) {
+                        grid[y][x].isPartOfPattern = true;
+                    }
+                });
+
+                // Convertir les positions en coordonnées pour animatePattern
+                const animatePath = Array.from(uniquePositions).map(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    return [x, y];
+                });
+
+                if (animatePath.length > 0) {
+                    animatePattern(animatePath);
+                }
+            }
+
+            // Mettre à jour l'affichage après détection des motifs
+            renderGrid();
         }
 
-        // Essayer de trouver un cycle à partir du point de départ
-        visited.clear();
-        path.length = 0;
-        positionsPath.length = 0;
-        parent.clear();
-        if (dfs(startNode, startNode)) {
-            return positionsPath;
+        // Fonction pour animatePattern (marque les cases du motif détecté)
+        function animatePattern(path) {
+            console.log("Pattern detected:", path);
+            // L'animation est déjà gérée par la mise à jour de isPartOfPattern et renderGrid
         }
 
-        return null;
-    }
-
-    // Essayer de trouver tous les cycles possibles à partir des deux points de la pièce posée
-    const startPieceKey = `${startX},${startY}`;
-    const startPoints = [`${piece.start}@${startPieceKey}`, `${piece.end}@${startPieceKey}`];
-    const allPaths = [];
-
-    for (let startPoint of startPoints) {
-        let cycle = findCycle(startPoint);
-        while (cycle) {
-            // Ajouter le cycle trouvé à la liste des chemins
-            allPaths.push(cycle.slice(0, -1)); // Exclure la dernière entrée (répétition de la première)
-            // Recommencer la recherche pour trouver d'autres cycles
-            cycle = findCycle(startPoint);
+        // Fonction pour réinitialiser la grille
+        function clearGrid() {
+            grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+            renderGrid();
         }
-    }
 
-    // Si aucun cycle n'est trouvé, sortir
-    if (allPaths.length === 0) {
-        console.log("No cycles found");
-        return;
-    }
-
-    console.log("Cycles found:", allPaths);
-
-    // Traiter chaque cycle trouvé
-    for (let path of allPaths) {
-        // Convertir les positions en coordonnées pour animatePattern
-        const uniquePositions = new Set(path);
-        const animatePath = Array.from(uniquePositions).map(key => {
-            const [x, y] = key.split(',').map(Number);
-            return [x, y];
-        });
-
-        if (animatePath.length > 0) {
-            animatePattern(animatePath);
-        }
-    }
-}
-
-// Exemple de placement des pièces pour tester le carré à 4 pièces
-function testSquarePattern() {
-    // Réinitialiser la grille
-    grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
-
-    // Placer les pièces pour former un carré à 4 pièces (milieux des côtés)
-    placePiece(2, 1, 'top', 'right'); // Pièce 1
-    placePiece(3, 1, 'left', 'bottom'); // Pièce 2
-    placePiece(3, 2, 'top', 'right'); // Pièce 3
-    placePiece(2, 2, 'left', 'bottom'); // Pièce 4
-}
-
-// Exemple de placement des pièces pour tester le triangle à 2 pièces
-function testTrianglePattern() {
-    // Réinitialiser la grille
-    grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
-
-    // Placer les pièces pour former un triangle à 2 pièces (coin et milieu)
-    placePiece(2, 1, 'top-left', 'left'); // Pièce 1
-    placePiece(3, 1, 'bottom-right', 'right'); // Pièce 2
-}
-
-// Fonction placeholder pour animatePattern (à implémenter selon ton jeu)
-function animatePattern(path) {
-    console.log("Pattern detected:", path);
-    // Implémenter l'animation ici selon ton jeu
-}
-
-// Tester les motifs
-testSquarePattern();
-testTrianglePattern();
+        // Afficher la grille initiale
+        renderGrid();
     </script>
 </body>
 </html>
