@@ -61,6 +61,13 @@
             font-size: 24px;
             color: red;
         }
+        .highlight {
+            animation: blink 0.5s alternate 3;
+        }
+        @keyframes blink {
+            from { background-color: white; }
+            to { background-color: yellow; }
+        }
     </style>
 </head>
 <body>
@@ -76,6 +83,7 @@
         const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
         let pieces = [];
         let selectedPiece = null;
+        let selectedPieceIndex = null;
         let score = 0;
         let gameOver = false;
 
@@ -88,7 +96,7 @@
             { x: 25, y: 0, type: 'mid' },        // Top-mid
             { x: 50, y: 25, type: 'mid' },       // Right-mid
             { x: 25, y: 50, type: 'mid' },       // Bottom-mid
-            { x: 0, y: 25, type: 'mid' }         // Left-mid
+            { x: 0, y25, type: 'mid' }         // Left-mid
         ];
 
         // Initialize grid
@@ -157,6 +165,7 @@
         function selectPiece(index) {
             if (gameOver) return;
             selectedPiece = pieces[index];
+            selectedPieceIndex = index;
             document.querySelectorAll('.piece').forEach((p, i) => {
                 p.style.border = i === index ? '2px solid blue' : '1px solid #333';
             });
@@ -168,14 +177,23 @@
             grid[row][col] = { ...selectedPiece };
             const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
             drawPiece(cell.querySelector('canvas'), grid[row][col]);
-            pieces.splice(pieces.findIndex(p => p === selectedPiece), 1);
-            document.getElementById('pieces').children[pieces.findIndex(p => p === selectedPiece) || 0].remove();
+
+            // Remove the piece from the bottom
+            const pieceDiv = document.querySelector(`.piece[data-index="${selectedPieceIndex}"]`);
+            if (pieceDiv) pieceDiv.remove();
+            pieces[selectedPieceIndex] = null;
             selectedPiece = null;
+            selectedPieceIndex = null;
             document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
+
+            // Check for closed shape
             checkClosedShape(row, col);
-            if (pieces.length === 0) {
+
+            // Generate new pieces only if all 5 are used
+            if (pieces.every(p => p === null)) {
                 generatePieces();
             }
+
             checkGameOver();
         }
 
@@ -183,12 +201,23 @@
         function checkClosedShape(row, col) {
             const piece = grid[row][col];
             const points = [piece.point1, piece.point2];
+
+            // Quick check: if neither point connects to an occupied cell, no shape possible
+            let hasConnection = false;
+            for (let point of points) {
+                const adjacents = getAdjacentCells(row, col, point);
+                if (adjacents.some(adj => grid[adj.nextRow][adj.nextCol])) {
+                    hasConnection = true;
+                    break;
+                }
+            }
+            if (!hasConnection) return;
+
             for (let startPoint of points) {
                 const visited = new Set();
                 const path = [{ row, col, point: startPoint }];
                 if (findClosedPath(row, col, startPoint, piece.point2, visited, path)) {
-                    removePieces(path);
-                    updateScore(path.length);
+                    highlightAndRemovePieces(path);
                     break;
                 }
             }
@@ -265,17 +294,28 @@
             return adjacents;
         }
 
-        // Remove pieces in the closed path
-        function removePieces(path) {
+        // Highlight and remove pieces in the closed path
+        function highlightAndRemovePieces(path) {
             const uniquePieces = new Set();
             path.forEach(p => uniquePieces.add(`${p.row},${p.col}`));
+            const cells = [];
             uniquePieces.forEach(pos => {
                 const [row, col] = pos.split(',').map(Number);
-                grid[row][col] = null;
                 const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-                const ctx = cell.querySelector('canvas').getContext('2d');
-                ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                cell.classList.add('highlight');
+                cells.push({ row, col, cell });
             });
+
+            // Remove pieces after animation
+            setTimeout(() => {
+                cells.forEach(({ row, col, cell }) => {
+                    grid[row][col] = null;
+                    const ctx = cell.querySelector('canvas').getContext('2d');
+                    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                    cell.classList.remove('highlight');
+                });
+                updateScore(uniquePieces.size);
+            }, 1500); // Wait for 3 blinks (0.5s * 3)
         }
 
         // Update score
@@ -296,7 +336,7 @@
                 }
                 if (hasMove) break;
             }
-            if (!hasMove) {
+            if (!hasMove && pieces.every(p => p === null)) {
                 gameOver = true;
                 document.getElementById('game-over').style.display = 'block';
             }
