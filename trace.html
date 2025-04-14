@@ -61,8 +61,29 @@
         }
         #game-over {
             display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
             font-size: 24px;
-            color: red;
+        }
+        #game-over button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #game-over button:hover {
+            background-color: #45a049;
         }
         .highlight {
             animation: blink 0.5s alternate 3;
@@ -78,7 +99,12 @@
         <div id="score">Score: 0</div>
         <div id="grid"></div>
         <div id="pieces"></div>
-        <div id="game-over">Game Over!</div>
+        <div id="game-over">
+            Fin de partie !<br>
+            Score final : <span id="final-score"></span>
+            <br>
+            <button onclick="restartGame()">Rejouer</button>
+        </div>
     </div>
     <script>
         const GRID_SIZE = 7;
@@ -105,7 +131,7 @@
             { x: 0, y: 25, label: 'left', type: 'mid' }
         ];
 
-        // Map piece points to pointGrid coordinates (your formulas)
+        // Map piece points to pointGrid coordinates
         function getPointGridCoords(row, col, point) {
             let i, j;
             if (point.type === 'corner') {
@@ -147,13 +173,13 @@
         function initializeGrid() {
             const gridDiv = document.getElementById('grid');
             gridDiv.innerHTML = '';
-            for (let row = 0; row < GRID_SIZE; row++) {
-                for (let col = 0; col < GRID_SIZE; col++) {
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    cell.addEventListener('click', () => placePiece(row, col));
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => placePiece(i, j));
                     const canvas = document.createElement('canvas');
                     canvas.width = CELL_SIZE;
                     canvas.height = CELL_SIZE;
@@ -179,7 +205,7 @@
                 canvas.height = CELL_SIZE;
                 pieceDiv.appendChild(canvas);
                 drawPiece(canvas, piece);
-                pieceDiv.addEventListener('click', () => selectPiece(i));
+                pieceDiv.addEventListener('click', (event) => selectPiece(i, event));
                 piecesDiv.appendChild(pieceDiv);
             }
         }
@@ -209,18 +235,18 @@
         }
 
         // Select or deselect a piece
-        function selectPiece(index) {
+        function selectPiece(index, event) {
+            event.preventDefault();
             if (gameOver) return;
+            const pieceDivs = document.querySelectorAll('.piece');
+            pieceDivs.forEach(p => p.style.border = '1px solid #333');
             if (selectedPieceIndex === index) {
                 selectedPiece = null;
                 selectedPieceIndex = null;
-                document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
             } else {
                 selectedPiece = pieces[index];
                 selectedPieceIndex = index;
-                document.querySelectorAll('.piece').forEach((p, i) => {
-                    p.style.border = i === index ? '2px solid blue' : '1px solid #333';
-                });
+                pieceDivs[index].style.border = '2px solid blue';
             }
         }
 
@@ -372,6 +398,7 @@
         function updateScore(piecesRemoved) {
             score += piecesRemoved;
             document.getElementById('score').textContent = `Score: ${score}`;
+            checkGameOver();
         }
 
         // Check game over
@@ -386,10 +413,38 @@
                 }
                 if (hasMove) break;
             }
-            if (!hasMove && pieces.every(p => p === null)) {
+            if (!hasMove) {
                 gameOver = true;
-                document.getElementById('game-over').style.display = 'block';
+                const gameOverDiv = document.getElementById('game-over');
+                document.getElementById('final-score').textContent = score;
+                gameOverDiv.style.display = 'block';
             }
+        }
+
+        // Restart the game
+        function restartGame() {
+            gameOver = false;
+            score = 0;
+            document.getElementById('score').textContent = `Score: ${score}`;
+            document.getElementById('game-over').style.display = 'none';
+            // Reset grid
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    grid[i][j] = null;
+                    const cell = document.querySelector(`.cell[data-row="${i}"][data-col="${j}"]`);
+                    const ctx = cell.querySelector('canvas').getContext('2d');
+                    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                    cell.classList.remove('occupied');
+                }
+            }
+            // Reset pointGrid
+            for (let i = 0; i < POINT_GRID_SIZE; i++) {
+                for (let j = 0; j < POINT_GRID_SIZE; j++) {
+                    pointGrid[i][j] = [];
+                }
+            }
+            // Generate new pieces
+            generatePieces();
         }
 
         // Start the game
