@@ -105,7 +105,7 @@
         // Initialize grid
         function initializeGrid() {
             const gridDiv = document.getElementById('grid');
-            gridDiv.innerHTML = ''; // Clear any existing content
+            gridDiv.innerHTML = '';
             for (let i = 0; i < GRID_SIZE; i++) {
                 for (let j = 0; j < GRID_SIZE; j++) {
                     const cell = document.createElement('div');
@@ -171,12 +171,10 @@
         function selectPiece(index) {
             if (gameOver) return;
             if (selectedPieceIndex === index) {
-                // Deselect if clicking the same piece
                 selectedPiece = null;
                 selectedPieceIndex = null;
                 document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
             } else {
-                // Select new piece
                 selectedPiece = pieces[index];
                 selectedPieceIndex = index;
                 document.querySelectorAll('.piece').forEach((p, i) => {
@@ -228,10 +226,12 @@
             }
             if (!hasConnection) return;
 
+            // Try both points as starting points
             for (let startPoint of points) {
+                const targetPoint = points.find(p => p !== startPoint);
                 const visited = new Set();
                 const path = [{ row, col, point: startPoint }];
-                if (findClosedPath(row, col, startPoint, piece.point2, visited, path)) {
+                if (findClosedPath(row, col, startPoint, targetPoint, visited, path)) {
                     highlightAndRemovePieces(path);
                     break;
                 }
@@ -240,26 +240,31 @@
 
         // Find a closed path
         function findClosedPath(startRow, startCol, currentPoint, targetPoint, visited, path) {
-            const key = `${path[path.length - 1].row},${path[path.length - 1].col},${currentPoint.x},${currentPoint.y}`;
+            const currentRow = path[path.length - 1].row;
+            const currentCol = path[path.length - 1].col;
+            const key = `${currentRow},${currentCol},${currentPoint.x},${currentPoint.y}`;
             if (visited.has(key)) return false;
             visited.add(key);
 
             // Check if we reached the target point
-            if (path.length > 1 && path[path.length - 1].row === startRow && path[path.length - 1].col === startCol &&
+            if (path.length > 1 && currentRow === startRow && currentCol === startCol &&
                 currentPoint.x === targetPoint.x && currentPoint.y === targetPoint.y) {
                 return true;
             }
 
             // Get adjacent cells
-            const row = path[path.length - 1].row;
-            const col = path[path.length - 1].col;
-            const adjacents = getAdjacentCells(row, col, currentPoint);
+            const adjacents = getAdjacentCells(currentRow, currentCol, currentPoint);
 
             for (let adj of adjacents) {
                 const { nextRow, nextCol, nextPoint } = adj;
                 if (grid[nextRow][nextCol]) {
-                    path.push({ row: nextRow, col: nextCol, point: nextPoint });
-                    if (findClosedPath(startRow, startCol, nextPoint, targetPoint, visited, path)) {
+                    // Determine the next point to follow on the adjacent piece
+                    const adjPiece = grid[nextRow][nextCol];
+                    const otherPoint = (adjPiece.point1.x === nextPoint.x && adjPiece.point1.y === nextPoint.y)
+                        ? adjPiece.point2
+                        : adjPiece.point1;
+                    path.push({ row: nextRow, col: nextCol, point: otherPoint });
+                    if (findClosedPath(startRow, startCol, otherPoint, targetPoint, visited, path)) {
                         return true;
                     }
                     path.pop();
