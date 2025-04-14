@@ -83,7 +83,10 @@
     <script>
         const GRID_SIZE = 7;
         const CELL_SIZE = 50;
+        const POINT_GRID_SIZE = 15; // 2*7 + 1
         const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
+        // Grid 15x15 to track edge points
+        const pointGrid = Array(POINT_GRID_SIZE).fill().map(() => Array(POINT_GRID_SIZE).fill(null));
         let pieces = [];
         let selectedPiece = null;
         let selectedPieceIndex = null;
@@ -101,6 +104,21 @@
             { x: 25, y: 50, type: 'mid' },       // Bottom-mid
             { x: 0, y: 25, type: 'mid' }         // Left-mid
         ];
+
+        // Map piece points to pointGrid coordinates
+        function getPointGridCoords(row, col, point) {
+            const baseRow = 2 * row;
+            const baseCol = 2 * col;
+            if (point.x === 0 && point.y === 0) return { r: baseRow, c: baseCol };      // Top-left
+            if (point.x === 50 && point.y === 0) return { r: baseRow, c: baseCol + 2 };  // Top-right
+            if (point.x === 50 && point.y === 50) return { r: baseRow + 2, c: baseCol + 2 }; // Bottom-right
+            if (point.x === 0 && point.y === 50) return { r: baseRow + 2, c: baseCol };  // Bottom-left
+            if (point.x === 25 && point.y === 0) return { r: baseRow, c: baseCol + 1 };  // Top-mid
+            if (point.x === 50 && point.y === 25) return { r: baseRow + 1, c: baseCol + 2 }; // Right-mid
+            if (point.x === 25 && point.y === 50) return { r: baseRow + 2, c: baseCol + 1 }; // Bottom-mid
+            if (point.x === 0 && point.y === 25) return { r: baseRow + 1, c: baseCol };  // Left-mid
+            return null;
+        }
 
         // Initialize grid
         function initializeGrid() {
@@ -191,6 +209,15 @@
             cell.classList.add('occupied');
             drawPiece(cell.querySelector('canvas'), grid[row][col]);
 
+            // Update pointGrid
+            const points = [selectedPiece.point1, selectedPiece.point2];
+            points.forEach(point => {
+                const coords = getPointGridCoords(row, col, point);
+                if (coords) {
+                    pointGrid[coords.r][coords.c] = { row, col, otherPoint: points.find(p => p !== point) };
+                }
+            });
+
             // Remove the piece from the bottom
             const pieceDiv = document.querySelector(`.piece[data-index="${selectedPieceIndex}"]`);
             if (pieceDiv) pieceDiv.remove();
@@ -200,7 +227,7 @@
             document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
 
             // Check for closed shape
-            checkClosedShape(row, col);
+            checkClosedShape(row, col, points);
 
             // Generate new pieces only if all 5 are used
             if (pieces.every(p => p === null)) {
@@ -211,27 +238,14 @@
         }
 
         // Check for closed shapes
-        function checkClosedShape(row, col) {
-            const piece = grid[row][col];
-            const points = [piece.point1, piece.point2];
-
-            // Quick check: if neither point connects to an occupied cell, no shape possible
-            let hasConnection = false;
-            for (let point of points) {
-                const adjacents = getAdjacentCells(row, col, point);
-                if (adjacents.some(adj => grid[adj.nextRow][adj.nextCol])) {
-                    hasConnection = true;
-                    break;
-                }
-            }
-            if (!hasConnection) return;
-
-            // Try both points as starting points
+        function checkClosedShape(row, col, points) {
             for (let startPoint of points) {
+                const startCoords = getPointGridCoords(row, col, startPoint);
                 const targetPoint = points.find(p => p !== startPoint);
+                const targetCoords = getPointGridCoords(row, col, targetPoint);
                 const visited = new Set();
                 const path = [{ row, col, point: startPoint }];
-                if (findClosedPath(row, col, startPoint, targetPoint, visited, path)) {
+                if (findClosedPath(row, col, startPoint, targetPoint, startCoords, targetCoords, visited, path)) {
                     highlightAndRemovePieces(path);
                     break;
                 }
@@ -239,79 +253,34 @@
         }
 
         // Find a closed path
-        function findClosedPath(startRow, startCol, currentPoint, targetPoint, visited, path) {
+        function findClosedPath(startRow, startCol, currentPoint, targetPoint, startCoords, targetCoords, visited, path) {
             const currentRow = path[path.length - 1].row;
             const currentCol = path[path.length - 1].col;
+            const currentCoords = getPointGridCoords(currentRow, currentCol, currentPoint);
             const key = `${currentRow},${currentCol},${currentPoint.x},${currentPoint.y}`;
             if (visited.has(key)) return false;
             visited.add(key);
 
-            // Check if we reached the target point with a valid closed shape
+            // Check if we reached the target point
             if (path.length > 2 && currentRow === startRow && currentCol === startCol &&
                 currentPoint.x === targetPoint.x && currentPoint.y === targetPoint.y) {
                 return true;
             }
 
-            // Get adjacent cells
-            const adjacents = getAdjacentCells(currentRow, currentCol, currentPoint);
-
-            for (let adj of adjacents) {
-                const { nextRow, nextCol, nextPoint } = adj;
-                if (grid[nextRow][nextCol]) {
-                    // Determine the next point to follow on the adjacent piece
-                    const adjPiece = grid[nextRow][nextCol];
-                    const otherPoint = (adjPiece.point1.x === nextPoint.x && adjPiece.point1.y === nextPoint.y)
-                        ? adjPiece.point2
-                        : adjPiece.point1;
-                    path.push({ row: nextRow, col: nextCol, point: otherPoint });
-                    if (findClosedPath(startRow, startCol, otherPoint, targetPoint, visited, path)) {
+            // Check pointGrid for connections
+            const coords = getPointGridCoords(currentRow, currentCol, currentPoint);
+            if (coords && pointGrid[coords.r][coords.c]) {
+                const info = pointGrid[coords.r][coords.c];
+                if (info.row !== currentRow || info.col !== currentCol) { // Avoid same piece
+                    path.push({ row: info.row, col: info.col, point: info.otherPoint });
+                    if (findClosedPath(startRow, startCol, info.otherPoint, targetPoint, startCoords, targetCoords, visited, path)) {
                         return true;
                     }
                     path.pop();
                 }
             }
-            return false;
-        }
 
-        // Get adjacent cells based on point type
-        function getAdjacentCells(row, col, point) {
-            const adjacents = [];
-            if (point.type === 'mid') {
-                if (point.x === 25 && point.y === 0 && row > 0) // Top-mid
-                    adjacents.push({ nextRow: row - 1, nextCol: col, nextPoint: { x: 25, y: 50, type: 'mid' } });
-                if (point.x === 50 && point.y === 25 && col < GRID_SIZE - 1) // Right-mid
-                    adjacents.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 25, type: 'mid' } });
-                if (point.x === 25 && point.y === 50 && row < GRID_SIZE - 1) // Bottom-mid
-                    adjacents.push({ nextRow: row + 1, nextCol: col, nextPoint: { x: 25, y: 0, type: 'mid' } });
-                if (point.x === 0 && point.y === 25 && col > 0) // Left-mid
-                    adjacents.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 25, type: 'mid' } });
-            } else if (point.type === 'corner') {
-                // Top-left
-                if (point.x === 0 && point.y === 0) {
-                    if (row > 0) adjacents.push({ nextRow: row - 1, nextCol: col, nextPoint: { x: 0, y: 50, type: 'corner' } });
-                    if (col > 0) adjacents.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 0, type: 'corner' } });
-                    if (row > 0 && col > 0) adjacents.push({ nextRow: row - 1, nextCol: col - 1, nextPoint: { x: 50, y: 50, type: 'corner' } });
-                }
-                // Top-right
-                if (point.x === 50 && point.y === 0) {
-                    if (row > 0) adjacents.push({ nextRow: row - 1, nextCol: col, nextPoint: { x: 50, y: 50, type: 'corner' } });
-                    if (col < GRID_SIZE - 1) adjacents.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 0, type: 'corner' } });
-                    if (row > 0 && col < GRID_SIZE - 1) adjacents.push({ nextRow: row - 1, nextCol: col + 1, nextPoint: { x: 0, y: 50, type: 'corner' } });
-                }
-                // Bottom-right
-                if (point.x === 50 && point.y === 50) {
-                    if (row < GRID_SIZE - 1) adjacents.push({ nextRow: row + 1, nextCol: col, nextPoint: { x: 50, y: 0, type: 'corner' } });
-                    if (col < GRID_SIZE - 1) adjacents.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 50, type: 'corner' } });
-                    if (row < GRID_SIZE - 1 && col < GRID_SIZE - 1) adjacents.push({ nextRow: row + 1, nextCol: col + 1, nextPoint: { x: 0, y: 0, type: 'corner' } });
-                }
-                // Bottom-left
-                if (point.x === 0 && point.y === 50) {
-                    if (row < GRID_SIZE - 1) adjacents.push({ nextRow: row + 1, nextCol: col, nextPoint: { x: 0, y: 0, type: 'corner' } });
-                    if (col > 0) adjacents.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 50, type: 'corner' } });
-                    if (row < GRID_SIZE - 1 && col > 0) adjacents.push({ nextRow: row + 1, nextCol: col - 1, nextPoint: { x: 50, y: 0, type: 'corner' } });
-                }
-            }
-            return adjacents;
+            return false;
         }
 
         // Highlight and remove pieces in the closed path
@@ -329,6 +298,12 @@
             // Remove pieces after animation
             setTimeout(() => {
                 cells.forEach(({ row, col, cell }) => {
+                    // Clear pointGrid entries
+                    const piece = grid[row][col];
+                    [piece.point1, piece.point2].forEach(point => {
+                        const coords = getPointGridCoords(row, col, point);
+                        if (coords) pointGrid[coords.r][coords.c] = null;
+                    });
                     grid[row][col] = null;
                     const ctx = cell.querySelector('canvas').getContext('2d');
                     ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
