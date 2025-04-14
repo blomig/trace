@@ -286,7 +286,7 @@
             const currentRow = path[path.length - 1].row;
             const currentCol = path[path.length - 1].col;
             const coords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === currentPointLabel));
-            console.log(`Visiting: (${currentRow}, ${currentCol}) at ${currentPointLabel}, path length: ${path.length}, coords: (${coords.i}, ${coords.j})`);
+            console.log(`Visiting: (${currentRow}, ${currentCol}) at ${currentPointLabel}, path length: ${path.length}, coords: (${coords ? `${coords.i},${coords.j}` : 'null')}`);
 
             // Check if we returned to the initial piece
             if (path.length >= 4 && currentRow === startRow && currentCol === startCol) {
