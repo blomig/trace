@@ -103,19 +103,22 @@
         ];
 
         // Initialize grid
-        const gridDiv = document.getElementById('grid');
-        for (let i = 0; i < GRID_SIZE; i++) {
-            for (let j = 0; j < GRID_SIZE; j++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.row = i;
-                cell.dataset.col = j;
-                cell.addEventListener('click', () => placePiece(i, j));
-                const canvas = document.createElement('canvas');
-                canvas.width = CELL_SIZE;
-                canvas.height = CELL_SIZE;
-                cell.appendChild(canvas);
-                gridDiv.appendChild(cell);
+        function initializeGrid() {
+            const gridDiv = document.getElementById('grid');
+            gridDiv.innerHTML = ''; // Clear any existing content
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => placePiece(i, j));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = CELL_SIZE;
+                    canvas.height = CELL_SIZE;
+                    cell.appendChild(canvas);
+                    gridDiv.appendChild(cell);
+                }
             }
         }
 
@@ -356,6 +359,7 @@
         }
 
         // Start the game
+        initializeGrid();
         generatePieces();
     </script>
 </body>
