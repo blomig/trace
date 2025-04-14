@@ -83,7 +83,7 @@
     <script>
         const GRID_SIZE = 7;
         const CELL_SIZE = 50;
-        const POINT_GRID_SIZE = 15; // 2*7 + 1
+        const POINT_GRID_SIZE = 15; // 0 to 14
         const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
         // Grid 15x15 to track shared edge points
         const pointGrid = Array(POINT_GRID_SIZE).fill().map(() => Array(POINT_GRID_SIZE).fill().map(() => []));
@@ -105,40 +105,40 @@
             { x: 0, y: 25, label: 'left', type: 'mid' }
         ];
 
-        // Map piece points to pointGrid coordinates (shared points)
+        // Map piece points to pointGrid coordinates (based on your mapping)
         function getPointGridCoords(row, col, point) {
-            let r, c;
+            let i, j;
             if (point.type === 'corner') {
                 if (point.label === 'top-left') {
-                    r = 2 * row;
-                    c = 2 * col;
+                    i = 2 * row;
+                    j = 2 * col;
                 } else if (point.label === 'top-right') {
-                    r = 2 * row;
-                    c = 2 * col + 1;
+                    i = 2 * row;
+                    j = 2 * col + 2;
                 } else if (point.label === 'bottom-right') {
-                    r = 2 * row + 1;
-                    c = 2 * col + 1;
+                    i = 2 * row + 2;
+                    j = 2 * col + 2;
                 } else if (point.label === 'bottom-left') {
-                    r = 2 * row + 1;
-                    c = 2 * col;
+                    i = 2 * row + 2;
+                    j = 2 * col;
                 }
             } else if (point.type === 'mid') {
                 if (point.label === 'top') {
-                    r = 2 * row;
-                    c = 2 * col;
+                    i = 2 * row;
+                    j = 2 * col + 1;
                 } else if (point.label === 'right') {
-                    r = 2 * row;
-                    c = 2 * col + 1;
+                    i = 2 * row + 1;
+                    j = 2 * col + 2;
                 } else if (point.label === 'bottom') {
-                    r = 2 * row + 1;
-                    c = 2 * col;
+                    i = 2 * row + 2;
+                    j = 2 * col + 1;
                 } else if (point.label === 'left') {
-                    r = 2 * row;
-                    c = 2 * col + 1;
+                    i = 2 * row + 1;
+                    j = 2 * col;
                 }
             }
-            if (r >= 0 && r < POINT_GRID_SIZE && c >= 0 && c < POINT_GRID_SIZE) {
-                return { r, c };
+            if (i >= 0 && i < POINT_GRID_SIZE && j >= 0 && j < POINT_GRID_SIZE) {
+                return { i, j };
             }
             return null;
         }
@@ -147,13 +147,13 @@
         function initializeGrid() {
             const gridDiv = document.getElementById('grid');
             gridDiv.innerHTML = '';
-            for (let i = 0; i < GRID_SIZE; i++) {
-                for (let j = 0; j < GRID_SIZE; j++) {
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
-                    cell.dataset.row = i;
-                    cell.dataset.col = j;
-                    cell.addEventListener('click', () => placePiece(i, j));
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => placePiece(row, col));
                     const canvas = document.createElement('canvas');
                     canvas.width = CELL_SIZE;
                     canvas.height = CELL_SIZE;
@@ -237,7 +237,7 @@
             points.forEach(point => {
                 const coords = getPointGridCoords(row, col, point);
                 if (coords) {
-                    pointGrid[coords.r][coords.c].push({
+                    pointGrid[coords.i][coords.j].push({
                         row,
                         col,
                         points: [point.label, points.find(p => p !== point).label]
@@ -268,8 +268,8 @@
         function checkClosedShape(row, col, points) {
             for (let startPoint of points) {
                 const coords = getPointGridCoords(row, col, startPoint);
-                if (coords && pointGrid[coords.r][coords.c].length > 1) {
-                    console.log(`Checking point (${coords.r}, ${coords.c}):`, pointGrid[coords.r][coords.c]);
+                if (coords && pointGrid[coords.i][coords.j].length > 1) {
+                    console.log(`Checking point (${coords.i}, ${coords.j}):`, pointGrid[coords.i][coords.j]);
                     const visited = new Set();
                     const path = [{ row, col, point: startPoint.label }];
                     if (findClosedPath(row, col, startPoint.label, visited, path)) {
@@ -294,26 +294,24 @@
             console.log(`Visiting: (${currentRow}, ${currentCol}) at ${currentPointLabel}, path length: ${path.length}`);
 
             // Check if we returned to the initial piece
-            if (path.length >= 4) {
-                const coords = getPointGridCoords(currentRow, currentCol, { label: currentPointLabel, type: currentPointLabel.includes('mid') ? 'mid' : 'corner' });
-                if (coords && pointGrid[coords.r][coords.c]) {
-                    for (let info of pointGrid[coords.r][coords.c]) {
-                        if (info.row === startRow && info.col === startCol) {
-                            console.log("Found closed path back to initial piece!");
-                            return true;
-                        }
+            const coords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === currentPointLabel));
+            if (coords && path.length >= 4) {
+                for (let info of pointGrid[coords.i][coords.j]) {
+                    if (info.row === startRow && info.col === startCol) {
+                        console.log("Found closed path back to initial piece!");
+                        return true;
                     }
                 }
             }
 
             // Get the current piece
-            const piece = pointGrid.flat().flat().find(p => p && p.row === currentRow && p.col === currentCol && p.points.includes(currentPointLabel));
+            const piece = pointGrid[coords.i][coords.j].find(p => p.row === currentRow && p.col === currentCol && p.points.includes(currentPointLabel));
             if (piece) {
                 const otherPointLabel = piece.points.find(p => p !== currentPointLabel);
                 const otherCoords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === otherPointLabel));
-                if (otherCoords && pointGrid[otherCoords.r][otherCoords.c]) {
-                    console.log(`Following piece to ${otherPointLabel} at (${otherCoords.r}, ${otherCoords.c})`);
-                    for (let nextInfo of pointGrid[otherCoords.r][otherCoords.c]) {
+                if (otherCoords && pointGrid[otherCoords.i][otherCoords.j].length > 0) {
+                    console.log(`Following piece to ${otherPointLabel} at (${otherCoords.i}, ${otherCoords.j})`);
+                    for (let nextInfo of pointGrid[otherCoords.i][otherCoords.j]) {
                         if (nextInfo.row !== currentRow || nextInfo.col !== currentCol) {
                             const nextPointLabel = nextInfo.points.find(p => p !== otherPointLabel) || nextInfo.points[0];
                             path.push({ row: nextInfo.row, col: nextInfo.col, point: nextPointLabel });
@@ -351,8 +349,8 @@
                     if (piece) {
                         [piece.point1, piece.point2].forEach(point => {
                             const coords = getPointGridCoords(row, col, point);
-                            if (coords && pointGrid[coords.r][coords.c]) {
-                                pointGrid[coords.r][coords.c] = pointGrid[coords.r][coords.c].filter(
+                            if (coords && pointGrid[coords.i][coords.j]) {
+                                pointGrid[coords.i][coords.j] = pointGrid[coords.i][coords.j].filter(
                                     info => info.row !== row || info.col !== col
                                 );
                             }
