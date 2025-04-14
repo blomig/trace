@@ -268,16 +268,17 @@
 
         // Check for closed shapes
         function checkClosedShape(row, col, points) {
-            // Try one point that has a connection
             for (let startPoint of points) {
                 const coords = getPointGridCoords(row, col, startPoint);
-                if (coords && pointGrid[coords.r][coords.c].length > 1) { // At least 2 pieces
+                if (coords && pointGrid[coords.r][coords.c].length > 1) {
+                    console.log(`Checking point (${coords.r}, ${coords.c}):`, pointGrid[coords.r][coords.c]);
                     const targetPoint = points.find(p => p !== startPoint);
                     const visited = new Set();
                     const path = [{ row, col, point: startPoint }];
                     if (findClosedPath(row, col, startPoint, targetPoint, visited, path)) {
+                        console.log("Closed path found:", path);
                         highlightAndRemovePieces(path);
-                        return; // Stop after finding one closed shape
+                        return;
                     }
                 }
             }
@@ -288,20 +289,27 @@
             const currentRow = path[path.length - 1].row;
             const currentCol = path[path.length - 1].col;
             const key = `${currentRow},${currentCol},${currentPoint.x},${currentPoint.y}`;
-            if (visited.has(key)) return false;
+            if (visited.has(key)) {
+                console.log(`Visited: ${key}, stopping`);
+                return false;
+            }
             visited.add(key);
+            console.log(`Visiting: (${currentRow}, ${currentCol}) at (${currentPoint.x}, ${currentPoint.y}), path length: ${path.length}`);
 
             // Check if we reached the target point
             if (path.length >= 4 && currentRow === startRow && currentCol === startCol &&
                 currentPoint.x === targetPoint.x && currentPoint.y === targetPoint.y) {
+                console.log("Found closed path!");
                 return true;
             }
 
             // Check pointGrid for connections
             const coords = getPointGridCoords(currentRow, currentCol, currentPoint);
             if (coords && pointGrid[coords.r][coords.c]) {
+                console.log(`Checking connections at (${coords.r}, ${coords.c}):`, pointGrid[coords.r][coords.c]);
                 for (let info of pointGrid[coords.r][coords.c]) {
-                    if (info.row !== currentRow || info.col !== currentCol) { // Avoid same piece
+                    if (info.row !== currentRow || info.col !== currentCol) {
+                        console.log(`Trying piece at (${info.row}, ${info.col}) with point (${info.otherPoint.x}, ${info.otherPoint.y})`);
                         path.push({ row: info.row, col: info.col, point: info.otherPoint });
                         if (findClosedPath(startRow, startCol, info.otherPoint, targetPoint, visited, path)) {
                             return true;
@@ -317,8 +325,9 @@
                 const otherPoint = (piece.point1.x === currentPoint.x && piece.point1.y === currentPoint.y)
                     ? piece.point2
                     : piece.point1;
-                if (!(currentRow === startRow && currentCol === startCol &&
-                    otherPoint.x === targetPoint.x && otherPoint.y === targetPoint.y)) {
+                const otherKey = `${currentRow},${currentCol},${otherPoint.x},${otherPoint.y}`;
+                if (!visited.has(otherKey)) {
+                    console.log(`Trying other point in same piece: (${otherPoint.x}, ${otherPoint.y})`);
                     path.push({ row: currentRow, col: currentCol, point: otherPoint });
                     if (findClosedPath(startRow, startCol, otherPoint, targetPoint, visited, path)) {
                         return true;
@@ -327,6 +336,7 @@
                 }
             }
 
+            console.log(`No path from (${currentRow}, ${currentCol}) at (${currentPoint.x}, ${currentPoint.y})`);
             return false;
         }
 
