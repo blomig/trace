@@ -86,7 +86,7 @@
         const POINT_GRID_SIZE = 15; // 2*7 + 1
         const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
         // Grid 15x15 to track shared edge points
-        const pointGrid = Array(POINT_GRID_SIZE).fill().map(() => Array(POINT_GRID_SIZE).fill(null));
+        const pointGrid = Array(POINT_GRID_SIZE).fill().map(() => Array(POINT_GRID_SIZE).fill().map(() => []));
         let pieces = [];
         let selectedPiece = null;
         let selectedPieceIndex = null;
@@ -134,7 +134,7 @@
                     c = 2 * col;
                 } else if (point.x === 0 && point.y === 25) { // Left-mid
                     r = 2 * row;
-                    c = 2 * col;
+                    c = 2 * col + 1;
                 }
             }
             // Ensure within bounds
@@ -238,8 +238,12 @@
             points.forEach(point => {
                 const coords = getPointGridCoords(row, col, point);
                 if (coords) {
-                    pointGrid[coords.r][coords.c] = pointGrid[coords.r][coords.c] || [];
-                    pointGrid[coords.r][coords.c].push({ row, col, point, otherPoint: points.find(p => p !== point) });
+                    pointGrid[coords.r][coords.c].push({
+                        row,
+                        col,
+                        point: { ...point },
+                        otherPoint: { ...points.find(p => p !== point) }
+                    });
                 }
             });
 
@@ -264,13 +268,17 @@
 
         // Check for closed shapes
         function checkClosedShape(row, col, points) {
+            // Try one point that has a connection
             for (let startPoint of points) {
-                const targetPoint = points.find(p => p !== startPoint);
-                const visited = new Set();
-                const path = [{ row, col, point: startPoint }];
-                if (findClosedPath(row, col, startPoint, targetPoint, visited, path)) {
-                    highlightAndRemovePieces(path);
-                    break;
+                const coords = getPointGridCoords(row, col, startPoint);
+                if (coords && pointGrid[coords.r][coords.c].length > 1) { // At least 2 pieces
+                    const targetPoint = points.find(p => p !== startPoint);
+                    const visited = new Set();
+                    const path = [{ row, col, point: startPoint }];
+                    if (findClosedPath(row, col, startPoint, targetPoint, visited, path)) {
+                        highlightAndRemovePieces(path);
+                        return; // Stop after finding one closed shape
+                    }
                 }
             }
         }
@@ -293,7 +301,7 @@
             const coords = getPointGridCoords(currentRow, currentCol, currentPoint);
             if (coords && pointGrid[coords.r][coords.c]) {
                 for (let info of pointGrid[coords.r][coords.c]) {
-                    if (info.row !== currentRow || info.col !== currentCol) {
+                    if (info.row !== currentRow || info.col !== currentCol) { // Avoid same piece
                         path.push({ row: info.row, col: info.col, point: info.otherPoint });
                         if (findClosedPath(startRow, startCol, info.otherPoint, targetPoint, visited, path)) {
                             return true;
@@ -346,7 +354,6 @@
                                 pointGrid[coords.r][coords.c] = pointGrid[coords.r][coords.c].filter(
                                     info => info.row !== row || info.col !== col
                                 );
-                                if (pointGrid[coords.r][coords.c].length === 0) pointGrid[coords.r][coords.c] = null;
                             }
                         });
                         grid[row][col] = null;
