@@ -294,9 +294,9 @@
                 return true;
             }
 
+            // Skip visited check for all points until path length is sufficient
             const key = `${currentRow},${currentCol},${currentPointLabel}`;
-            // Only block revisits for non-initial pieces
-            if (visited.has(key) && !(currentRow === startRow && currentCol === startCol && path.length >= 4)) {
+            if (visited.has(key)) {
                 console.log(`Visited: ${key}, stopping`);
                 return false;
             }
@@ -337,7 +337,7 @@
             uniquePieces.forEach(pos => {
                 const [row, col] = pos.split(',').map(Number);
                 const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-                cell.classList.add('highlight');
+                cell.classListandRemove('highlight');
                 cells.push({ row, col, cell });
             });
 
