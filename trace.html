@@ -285,41 +285,40 @@
         function findClosedPath(startRow, startCol, currentPointLabel, visited, path) {
             const currentRow = path[path.length - 1].row;
             const currentCol = path[path.length - 1].col;
+            const coords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === currentPointLabel));
+            console.log(`Visiting: (${currentRow}, ${currentCol}) at ${currentPointLabel}, path length: ${path.length}, coords: (${coords.i}, ${coords.j})`);
+
+            // Check if we returned to the initial piece
+            if (path.length >= 4 && currentRow === startRow && currentCol === startCol) {
+                console.log("Found closed path back to initial piece!");
+                return true;
+            }
+
             const key = `${currentRow},${currentCol},${currentPointLabel}`;
             if (visited.has(key)) {
-                console.log(`Visited: ${key}, stopping`);
+                console.log(`Visited: ${key}, stopping (but checking for loop)`);
                 return false;
             }
             visited.add(key);
-            console.log(`Visiting: (${currentRow}, ${currentCol}) at ${currentPointLabel}, path length: ${path.length}`);
-
-            // Check if we returned to the initial piece
-            const coords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === currentPointLabel));
-            if (coords && path.length >= 4) {
-                for (let info of pointGrid[coords.i][coords.j]) {
-                    if (info.row === startRow && info.col === startCol) {
-                        console.log("Found closed path back to initial piece!");
-                        return true;
-                    }
-                }
-            }
 
             // Get the current piece
-            const piece = pointGrid[coords.i][coords.j].find(p => p.row === currentRow && p.col === currentCol && p.points.includes(currentPointLabel));
-            if (piece) {
-                const otherPointLabel = piece.points.find(p => p !== currentPointLabel);
-                const otherCoords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === otherPointLabel));
-                if (otherCoords && pointGrid[otherCoords.i][otherCoords.j].length > 0) {
-                    console.log(`Following piece to ${otherPointLabel} at (${otherCoords.i}, ${otherCoords.j})`);
-                    for (let nextInfo of pointGrid[otherCoords.i][otherCoords.j]) {
-                        if (nextInfo.row !== currentRow || nextInfo.col !== currentCol) {
-                            const nextPointLabel = nextInfo.points.find(p => p !== otherPointLabel) || nextInfo.points[0];
-                            path.push({ row: nextInfo.row, col: nextInfo.col, point: nextPointLabel });
-                            console.log(`Trying next piece at (${nextInfo.row}, ${nextInfo.col}) with point ${nextPointLabel}`);
-                            if (findClosedPath(startRow, startCol, nextPointLabel, visited, path)) {
-                                return true;
+            if (coords && pointGrid[coords.i][coords.j]) {
+                const piece = pointGrid[coords.i][coords.j].find(p => p.row === currentRow && p.col === currentCol && p.points.includes(currentPointLabel));
+                if (piece) {
+                    const otherPointLabel = piece.points.find(p => p !== currentPointLabel);
+                    const otherCoords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === otherPointLabel));
+                    if (otherCoords && pointGrid[otherCoords.i][otherCoords.j].length > 0) {
+                        console.log(`Following piece to ${otherPointLabel} at (${otherCoords.i}, ${otherCoords.j})`);
+                        for (let nextInfo of pointGrid[otherCoords.i][otherCoords.j]) {
+                            if (nextInfo.row !== currentRow || nextInfo.col !== currentCol) {
+                                const nextPointLabel = nextInfo.points.find(p => p !== otherPointLabel) || nextInfo.points[0];
+                                path.push({ row: nextInfo.row, col: nextInfo.col, point: nextPointLabel });
+                                console.log(`Trying next piece at (${nextInfo.row}, ${nextInfo.col}) with point ${nextPointLabel}`);
+                                if (findClosedPath(startRow, startCol, nextPointLabel, visited, path)) {
+                                    return true;
+                                }
+                                path.pop();
                             }
-                            path.pop();
                         }
                     }
                 }
