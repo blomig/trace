@@ -296,7 +296,7 @@
 
             const key = `${currentRow},${currentCol},${currentPointLabel}`;
             if (visited.has(key)) {
-                console.log(`Visited: ${key}, stopping (but checking for loop)`);
+                console.log(`Visited: ${key}, stopping`);
                 return false;
             }
             visited.add(key);
