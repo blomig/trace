@@ -288,13 +288,15 @@
             const coords = getPointGridCoords(currentRow, currentCol, edgePoints.find(ep => ep.label === currentPointLabel));
             console.log(`Visiting: (${currentRow}, ${currentCol}) at ${currentPointLabel}, path length: ${path.length}, coords: ${coords ? `(${coords.i}, ${coords.j})` : 'null'}`);
 
-            // Check if we returned to the initial piece
-            if (path.length >= 4 && currentRow === startRow && currentCol === startCol) {
-                console.log("Found closed path back to initial piece!");
-                return true;
+            // Check if we returned to the initial piece with multiple pieces
+            if (currentRow === startRow && currentCol === startCol) {
+                const uniquePieces = new Set(path.map(p => `${p.row},${p.col}`));
+                if (uniquePieces.size >= 2) {
+                    console.log("Found closed path back to initial piece with multiple pieces!");
+                    return true;
+                }
             }
 
-            // Skip visited check for all points until path length is sufficient
             const key = `${currentRow},${currentCol},${currentPointLabel}`;
             if (visited.has(key)) {
                 console.log(`Visited: ${key}, stopping`);
@@ -337,7 +339,7 @@
             uniquePieces.forEach(pos => {
                 const [row, col] = pos.split(',').map(Number);
                 const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-                cell.classListandRemove('highlight');
+                cell.classList.add('highlight');
                 cells.push({ row, col, cell });
             });
 
