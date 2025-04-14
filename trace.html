@@ -83,9 +83,9 @@
     <script>
         const GRID_SIZE = 7;
         const CELL_SIZE = 50;
-        const POINT_GRID_SIZE = 21; // 3*7
+        const POINT_GRID_SIZE = 15; // 2*7 + 1
         const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
-        // Grid 21x21 to track edge points
+        // Grid 15x15 to track shared edge points
         const pointGrid = Array(POINT_GRID_SIZE).fill().map(() => Array(POINT_GRID_SIZE).fill(null));
         let pieces = [];
         let selectedPiece = null;
@@ -105,211 +105,21 @@
             { x: 0, y: 25, type: 'mid' }         // Left-mid
         ];
 
-        // Map piece points to pointGrid coordinates
+        // Map  Map piece points to pointGrid coordinates
         function getPointGridCoords(row, col, point) {
-            const baseRow = 3 * row;
-            const baseCol = 3 * col;
-            if (point.x === 0 && point.y === 0) return { r: baseRow, c: baseCol };      // Top-left
-            if (point.x === 50 && point.y === 0) return { r: baseRow, c: baseCol + 2 };  // Top-right
-            if (point.x === 50 && point.y === 50) return { r: baseRow + 2, c: baseCol + 2 }; // Bottom-right
-            if (point.x === 0 && point.y === 50) return { r: baseRow + 2, c: baseCol };  // Bottom-left
-            if (point.x === 25 && point.y === 0) return { r: baseRow, c: baseCol + 1 };  // Top-mid
-            if (point.x === 50 && point.y === 25) return { r: baseRow + 1, c: baseCol + 2 }; // Right-mid
-            if (point.x === 25 && point.y === 50) return { r: baseRow + 2, c: baseCol + 1 }; // Bottom-mid
-            if (point.x === 0 && point.y === 25) return { r: baseRow + 1, c: baseCol };  // Left-mid
-            return null;
-        }
-
-        // Get connected points (e.g., right of one piece to left of next)
-        function getConnectedPoints(row, col, point) {
-            const connections = [];
-            if (point.type === 'mid') {
-                if (point.x === 50 && point.y === 25 && col < GRID_SIZE - 1) // Right-mid
-                    connections.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 25, type: 'mid' } });
-                if (point.x === 0 && point.y === 25 && col > 0) // Left-mid
-                    connections.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 25, type: 'mid' } });
-                if (point.x === 25 && point.y === 0 && row > 0) // Top-mid
-                    connections.pushоборванная строка
-
-System: Oh no, je me suis encore coupé en plein élan ! 😅 Merci de ta patience, et désolé pour l’interruption. Je vais reprendre là où le code s’est arrêté et finaliser cette version avec ta grille 21x21 (ou 15x15 si on ajuste après clarification). Ton idée de mapper chaque case 7x7 à 9 points (8 bords + centre non utilisé) est claire maintenant, et je vais m’assurer que la détection des figures, notamment ton triangle (pièce gauche : right & bottom-right ; pièce droite : left & bottom-left), fonctionne parfaitement tout en éliminant les faux positifs. Je vais aussi compléter la fonction `getConnectedPoints` et tout le reste pour une détection robuste basée sur ta réflexion.
-
-### Clarification finale sur la grille :
-Tu as mentionné une grille 15x15, mais ta description (9 points par case 7x7, soit 3x3 points par case) suggère plutôt une grille 21x21 :
-- **7 cases × 3 points par dimension** = 21 points (0, 25, 50 pour x et y).
-- Une grille 21x21 couvre tous les points de bord possibles (8 par pièce × 49 cases).
-- Si tu visais 15x15, ça pourrait être une simplification (ex. 2 points par case + bords), mais pour ton triangle, on a besoin de distinguer précisément right `(50,25)` de left `(0,25)` entre cases adjacentes, donc 21x21 semble plus adapté.
-
-Je vais utiliser une grille 21x21, où :
-- Chaque case `(row, col)` mappe ses points de bord ainsi :
-  - Right `(50,25)` → `(3*row+1, 3*col+2)`.
-  - Bottom-right `(50,50)` → `(3*row+2, 3*col+2)`.
-  - Left `(0,25)` de `(row, col+1)` → `(3*row+1, 3*col+3)`.
-  - Bottom-left `(0,50)` de `(row, col+1)` → `(3*row+2, 3*col+3)`.
-- **Connexion** : Right d’une case touche left de la case à droite (ex. `(3*row+1, 3*col+2)` connecte à `(3*row+1, 3*col+3)`).
-
-Si tu confirmes que 15x15 était intentionnel, je peux ajuster après ce test.
-
-### Code corrigé et complet :
-Voici la version finale avec ta méthode de grille 21x21 :
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Puzzle Game</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-        }
-        #game-container {
-            text-align: center;
-        }
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(7, 50px);
-            gap: 2px;
-            background-color: #333;
-            padding: 2px;
-            margin-bottom: 20px;
-        }
-        .cell {
-            width: 50px;
-            height: 50px;
-            background-color: white;
-            position: relative;
-            cursor: pointer;
-        }
-        .cell.occupied {
-            cursor: not-allowed;
-        }
-        .cell canvas {
-            width: 100%;
-            height: 100%;
-        }
-        #pieces {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .piece {
-            width: 50px;
-            height: 50px;
-            background-color: white;
-            border: 1px solid #333;
-            cursor: pointer;
-        }
-        .piece canvas {
-            width: 100%;
-            height: 100%;
-        }
-        #score {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        #game-over {
-            display: none;
-            font-size: 24px;
-            color: red;
-        }
-        .highlight {
-            animation: blink 0.5s alternate 3;
-        }
-        @keyframes blink {
-            from { background-color: white; }
-            to { background-color: yellow; }
-        }
-    </style>
-</head>
-<body>
-    <div id="game-container">
-        <div id="score">Score: 0</div>
-        <div id="grid"></div>
-        <div id="pieces"></div>
-        <div id="game-over">Game Over!</div>
-    </div>
-    <script>
-        const GRID_SIZE = 7;
-        const CELL_SIZE = 50;
-        const POINT_GRID_SIZE = 21; // 3*7
-        const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
-        // Grid 21x21 to track edge points
-        const pointGrid = Array(POINT_GRID_SIZE).fill().map(() => Array(POINT_GRID_SIZE).fill(null));
-        let pieces = [];
-        let selectedPiece = null;
-        let selectedPieceIndex = null;
-        let score = 0;
-        let gameOver = false;
-
-        // Possible edge points: 4 corners, 4 midpoints
-        const edgePoints = [
-            { x: 0, y: 0, type: 'corner' },      // Top-left
-            { x: 50, y: 0, type: 'corner' },     // Top-right
-            { x: 50, y: 50, type: 'corner' },    // Bottom-right
-            { x: 0, y: 50, type: 'corner' },     // Bottom-left
-            { x: 25, y: 0, type: 'mid' },        // Top-mid
-            { x: 50, y: 25, type: 'mid' },       // Right-mid
-            { x: 25, y: 50, type: 'mid' },       // Bottom-mid
-            { x: 0, y: 25, type: 'mid' }         // Left-mid
-        ];
-
-        // Map piece points to pointGrid coordinates
-        function getPointGridCoords(row, col, point) {
-            const baseRow = 3 * row;
-            const baseCol = 3 * col;
-            if (point.x === 0 && point.y === 0) return { r: baseRow, c: baseCol };      // Top-left
-            if (point.x === 50 && point.y === 0) return { r: baseRow, c: baseCol + 2 };  // Top-right
-            if (point.x === 50 && point.y === 50) return { r: baseRow + 2, c: baseCol + 2 }; // Bottom-right
-            if (point.x === 0 && point.y === 50) return { r: baseRow + 2, c: baseCol };  // Bottom-left
-            if (point.x === 25 && point.y === 0) return { r: baseRow, c: baseCol + 1 };  // Top-mid
-            if (point.x === 50 && point.y === 25) return { r: baseRow + 1, c: baseCol + 2 }; // Right-mid
-            if (point.x === 25 && point.y === 50) return { r: baseRow + 2, c: baseCol + 1 }; // Bottom-mid
-            if (point.x === 0 && point.y === 25) return { r: baseRow + 1, c: baseCol };  // Left-mid
-            return null;
-        }
-
-        // Get connected points (e.g., right of one piece to left of next)
-        function getConnectedPoints(row, col, point) {
-            const connections = [];
-            if (point.type === 'mid') {
-                if (point.x === 25 && point.y === 0 && row > 0) // Top-mid
-                    connections.push({ nextRow: row - 1, nextCol: col, nextPoint: { x: 25, y: 50, type: 'mid' } });
-                if (point.x === 50 && point.y === 25 && col < GRID_SIZE - 1) // Right-mid
-                    connections.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 25, type: 'mid' } });
-                if (point.x === 25 && point.y === 50 && row < GRID_SIZE - 1) // Bottom-mid
-                    connections.push({ nextRow: row + 1, nextCol: col, nextPoint: { x: 25, y: 0, type: 'mid' } });
-                if (point.x === 0 && point.y === 25 && col > 0) // Left-mid
-                    connections.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 25, type: 'mid' } });
-            } else if (point.type === 'corner') {
-                if (point.x === 0 && point.y === 0) { // Top-left
-                    if (row > 0) connections.push({ nextRow: row - 1, nextCol: col, nextPoint: { x: 0, y: 50, type: 'corner' } });
-                    if (col > 0) connections.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 0, type: 'corner' } });
-                    if (row > 0 && col > 0) connections.push({ nextRow: row - 1, nextCol: col - 1, nextPoint: { x: 50, y: 50, type: 'corner' } });
-                }
-                if (point.x === 50 && point.y === 0) { // Top-right
-                    if (row > 0) connections.push({ nextRow: row - 1, nextCol: col, nextPoint: { x: 50, y: 50, type: 'corner' } });
-                    if (col < GRID_SIZE - 1) connections.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 0, type: 'corner' } });
-                    if (row > 0 && col < GRID_SIZE - 1) connections.push({ nextRow: row - 1, nextCol: col + 1, nextPoint: { x: 0, y: 50, type: 'corner' } });
-                }
-                if (point.x === 50 && point.y === 50) { // Bottom-right
-                    if (row < GRID_SIZE - 1) connections.push({ nextRow: row + 1, nextCol: col, nextPoint: { x: 50, y: 0, type: 'corner' } });
-                    if (col < GRID_SIZE - 1) connections.push({ nextRow: row, nextCol: col + 1, nextPoint: { x: 0, y: 50, type: 'corner' } });
-                    if (row < GRID_SIZE - 1 && col < GRID_SIZE - 1) connections.push({ nextRow: row + 1, nextCol: col + 1, nextPoint: { x: 0, y: 0, type: 'corner' } });
-                }
-                if (point.x === 0 && point.y === 50) { // Bottom-left
-                    if (row < GRID_SIZE - 1) connections.push({ nextRow: row + 1, nextCol: col, nextPoint: { x: 0, y: 0, type: 'corner' } });
-                    if (col > 0) connections.push({ nextRow: row, nextCol: col - 1, nextPoint: { x: 50, y: 50, type: 'corner' } });
-                    if (row < GRID_SIZE - 1 && col > 0) connections.push({ nextRow: row + 1, nextCol: col - 1, nextPoint: { x: 50, y: 0, type: 'corner' } });
-                }
+            // Points are shared between adjacent cells
+            if (point.type === 'corner') {
+                if (point.x === 0 && point.y === 0) return { r: 2 * row, c: 2 * col };      // Top-left
+                if (point.x === 50 && point.y === 0) return { r: 2 * row, c: 2 * col + 1 };  // Top-right
+                if (point.x === 50 && point.y === 50) return { r: 2 * row + 1, c: 2 * col + 1 }; // Bottom-right
+                if (point.x === 0 && point.y === 50) return { r: 2 * row + 1, c: 2 * col };  // Bottom-left
+            } else if (point.type === 'mid') {
+                if (point.x === 25 && point.y === 0) return { r: 2 * row, c: 2 * col };      // Top-mid (shared with top-left)
+                if (point.x === 50 && point.y === 25) return { r: 2 * row, c: 2 * col + 1 };  // Right-mid (shared with top-right)
+                if (point.x === 25 && point.y === 50) return { r: 2 * row + 1, c: 2 * col };  // Bottom-mid (shared with bottom-left)
+                if (point.x === 0 && point.y === 25) return { r: 2 * row, c: 2 * col };      // Left-mid (shared with top-left)
             }
-            return connections;
+            return null;
         }
 
         // Initialize grid
@@ -405,8 +215,9 @@ Voici la version finale avec ta méthode de grille 21x21 :
             const points = [selectedPiece.point1, selectedPiece.point2];
             points.forEach(point => {
                 const coords = getPointGridCoords(row, col, point);
-                if (coords) {
-                    pointGrid[coords.r][coords.c] = { row, col, point, otherPoint: points.find(p => p !== point) };
+                if (coords && coords.r < POINT_GRID_SIZE && coords.c < POINT_GRID_SIZE) {
+                    pointGrid[coords.r][coords.c] = pointGrid[coords.r][coords.c] || [];
+                    pointGrid[coords.r][coords.c].push({ row, col, point, otherPoint: points.find(p => p !== point) });
                 }
             });
 
@@ -432,7 +243,12 @@ Voici la version finale avec ta méthode de grille 21x21 :
         // Check for closed shapes
         function checkClosedShape(row, col, points) {
             for (let startPoint of points) {
+                const startCoords = getPointGridCoords(row, col, startPoint);
+                if (!startCoords || startCoords.r >= POINT_GRID_SIZE || startCoords.c >= POINT_GRID_SIZE) continue;
                 const targetPoint = points.find(p => p !== startPoint);
+                const targetCoords = getPointGridCoords(row, col, targetPoint);
+                if (!targetCoords || targetCoords.r >= POINT_GRID_SIZE || targetCoords.c >= POINT_GRID_SIZE) continue;
+
                 const visited = new Set();
                 const path = [{ row, col, point: startPoint }];
                 if (findClosedPath(row, col, startPoint, targetPoint, visited, path)) {
@@ -456,19 +272,13 @@ Voici la version finale avec ta méthode de grille 21x21 :
                 return true;
             }
 
-            // Get connections to other pieces
-            const connections = getConnectedPoints(currentRow, currentCol, currentPoint);
-            for (let conn of connections) {
-                const { nextRow, nextCol, nextPoint } = conn;
-                if (grid[nextRow][nextCol]) {
-                    const piece = grid[nextRow][nextCol];
-                    if (piece.point1.x === nextPoint.x && piece.point1.y === nextPoint.y ||
-                        piece.point2.x === nextPoint.x && piece.point2.y === nextPoint.y) {
-                        const otherPoint = (piece.point1.x === nextPoint.x && piece.point1.y === nextPoint.y)
-                            ? piece.point2
-                            : piece.point1;
-                        path.push({ row: nextRow, col: nextCol, point: otherPoint });
-                        if (findClosedPath(startRow, startCol, otherPoint, targetPoint, visited, path)) {
+            // Check pointGrid for connections
+            const coords = getPointGridCoords(currentRow, currentCol, currentPoint);
+            if (coords && coords.r < POINT_GRID_SIZE && coords.c < POINT_GRID_SIZE && pointGrid[coords.r][coords.c]) {
+                for (let info of pointGrid[coords.r][coords.c]) {
+                    if (info.row !== currentRow || info.col !== currentCol) { // Avoid same piece
+                        path.push({ row: info.row, col: info.col, point: info.otherPoint });
+                        if (findClosedPath(startRow, startCol, info.otherPoint, targetPoint, visited, path)) {
                             return true;
                         }
                         path.pop();
@@ -511,7 +321,12 @@ Voici la version finale avec ta méthode de grille 21x21 :
                     const piece = grid[row][col];
                     [piece.point1, piece.point2].forEach(point => {
                         const coords = getPointGridCoords(row, col, point);
-                        if (coords) pointGrid[coords.r][coords.c] = null;
+                        if (coords && coords.r < POINT_GRID_SIZE && coords.c < POINT_GRID_SIZE && pointGrid[coords.r][coords.c]) {
+                            pointGrid[coords.r][coords.c] = pointGrid[coords.r][coords.c].filter(
+                                info => info.row !== row || info.col !== col
+                            );
+                            if (pointGrid[coords.r][coords.c].length === 0) pointGrid[coords.r][coords.c] = null;
+                        }
                     });
                     grid[row][col] = null;
                     const ctx = cell.querySelector('canvas').getContext('2d');
