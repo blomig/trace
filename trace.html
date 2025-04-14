@@ -294,9 +294,9 @@
                 return true;
             }
 
-            // Skip visited check for the initial piece until path length is sufficient
             const key = `${currentRow},${currentCol},${currentPointLabel}`;
-            if (visited.has(key) && !(currentRow === startRow && currentCol === startCol)) {
+            // Only block revisits for non-initial pieces
+            if (visited.has(key) && !(currentRow === startRow && currentCol === startCol && path.length >= 4)) {
                 console.log(`Visited: ${key}, stopping`);
                 return false;
             }
