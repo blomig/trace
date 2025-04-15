@@ -85,13 +85,7 @@
         #game-over button:hover {
             background-color: #45a049;
         }
-        .highlight {
-            animation: blink 0.5s alternate 3;
-        }
-        @keyframes blink {
-            from { background-color: white; }
-            to { background-color: yellow; }
-        }
+        
     </style>
 </head>
 <body>
@@ -375,40 +369,117 @@
 
         // Highlight and remove pieces in the closed path
         function highlightAndRemovePieces(path) {
-            const uniquePieces = new Set();
-            path.forEach(p => uniquePieces.add(`${p.row},${p.col}`));
-            const cells = [];
-            uniquePieces.forEach(pos => {
-                const [row, col] = pos.split(',').map(Number);
-                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-                cell.classList.add('highlight');
-                cells.push({ row, col, cell });
+    const uniquePieces = new Set();
+    path.forEach(p => uniquePieces.add(`${p.row},${p.col}`));
+    const cells = [];
+
+    // Collecter les cellules et préparer l'animation
+    uniquePieces.forEach(pos => {
+        const [row, col] = pos.split(',').map(Number);
+        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+        cells.push({ row, col, cell });
+    });
+
+    // Animer le tracé de la figure en rouge
+    const duration = 1500; // Durée totale en ms
+    const startTime = performance.now();
+
+    function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1); // Progression de 0 à 1
+
+        cells.forEach(({ row, col, cell }) => {
+            const piece = grid[row][col];
+            if (!piece) return;
+            const canvas = cell.querySelector('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+
+            // Redessiner la pièce originale en noir
+            ctx.beginPath();
+            ctx.moveTo(piece.point1.x, piece.point1.y);
+            ctx.lineTo(25, 25);
+            ctx.lineTo(piece.point2.x, piece.point2.y);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Trouver les points à tracer en rouge pour cette pièce
+            const pathEntry = path.find(p => p.row === row && p.col === col);
+            if (!pathEntry) return;
+
+            const pointLabels = grid[row][col].point1.label === pathEntry.point ||
+                               grid[row][col].point2.label === pathEntry.point
+                               ? [grid[row][col].point1, grid[row][col].point2]
+                               : [grid[row][col].point2, grid[row][col].point1];
+
+            const startPoint = pointLabels[0];
+            const endPoint = pointLabels[1];
+
+            // Calculer les segments à dessiner en fonction du progrès
+            ctx.beginPath();
+            const segments = [
+                { from: startPoint, to: { x: 25, y: 25 } }, // Bord vers centre
+                { from: { x: 25, y: 25 }, to: endPoint }    // Centre vers autre bord
+            ];
+
+            let totalLength = 0;
+            segments.forEach(seg => {
+                const dx = seg.to.x - seg.from.x;
+                const dy = seg.to.y - seg.from.y;
+                totalLength += Math.sqrt(dx * dx + dy * dy);
             });
 
-            // Remove pieces after animation
-            setTimeout(() => {
-                cells.forEach(({ row, col, cell }) => {
-                    // Clear pointGrid entries
-                    const piece = grid[row][col];
-                    if (piece) {
-                        [piece.point1, piece.point2].forEach(point => {
-                            const coords = getPointGridCoords(row, col, point);
-                            if (coords && pointGrid[coords.i][coords.j]) {
-                                pointGrid[coords.i][coords.j] = pointGrid[coords.i][coords.j].filter(
-                                    info => info.row !== row || info.col !== col
-                                );
-                            }
-                        });
-                        grid[row][col] = null;
-                        const ctx = cell.querySelector('canvas').getContext('2d');
-                        ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
-                        cell.classList.remove('highlight');
-                        cell.classList.remove('occupied');
-                    }
-                });
-                updateScore(uniquePieces.size);
-            }, 1500); // Wait for 3 blinks (0.5s * 3)
+            let currentLength = progress * totalLength;
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+
+            for (let seg of segments) {
+                const dx = seg.to.x - seg.from.x;
+                const dy = seg.to.y - seg.from.y;
+                const segLength = Math.sqrt(dx * dx + dy * dy);
+                if (currentLength <= 0) break;
+
+                const segProgress = Math.min(currentLength / segLength, 1);
+                const endX = seg.from.x + dx * segProgress;
+                const endY = seg.from.y + dy * segProgress;
+
+                ctx.beginPath();
+                ctx.moveTo(seg.from.x, seg.from.y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+
+                currentLength -= segLength;
+            }
+        });
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            // Fin de l'animation : supprimer les pièces
+            cells.forEach(({ row, col, cell }) => {
+                const piece = grid[row][col];
+                if (piece) {
+                    [piece.point1, piece.point2].forEach(point => {
+                        const coords = getPointGridCoords(row, col, point);
+                        if (coords && pointGrid[coords.i][coords.j]) {
+                            pointGrid[coords.i][coords.j] = pointGrid[coords.i][coords.j].filter(
+                                info => info.row !== row || info.col !== col
+                            );
+                        }
+                    });
+                    grid[row][col] = null;
+                    const ctx = cell.querySelector('canvas').getContext('2d');
+                    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                    cell.classList.remove('occupied');
+                }
+            });
+            updateScore(uniquePieces.size);
         }
+    }
+
+    requestAnimationFrame(animate);
+}
 
         // Update score
         function updateScore(piecesRemoved) {
