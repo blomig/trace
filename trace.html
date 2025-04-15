@@ -85,7 +85,14 @@
         #game-over button:hover {
             background-color: #45a049;
         }
-        
+
+        .sparkle {
+    animation: sparkle 0.2s alternate 3; /* 3 cycles de 0.2s = 0.6s */
+}
+@keyframes sparkle {
+    from { background-color: white; }
+    to { background-color: #f0f0f0; } /* Blanc cassé pour un effet subtil */
+}
     </style>
 </head>
 <body>
@@ -381,12 +388,13 @@
     });
 
     // Animer le tracé de la figure en rouge
-    const duration = 1500; // Durée totale en ms
+    const traceDuration = 1500; // Durée du tracé en ms
+    const sparkleDuration = 600; // Durée du scintillement en ms
     const startTime = performance.now();
 
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1); // Progression de 0 à 1
+        const progress = Math.min(elapsed / traceDuration, 1); // Progression de 0 à 1 pour le tracé
 
         cells.forEach(({ row, col, cell }) => {
             const piece = grid[row][col];
@@ -456,25 +464,33 @@
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
-            // Fin de l'animation : supprimer les pièces
-            cells.forEach(({ row, col, cell }) => {
-                const piece = grid[row][col];
-                if (piece) {
-                    [piece.point1, piece.point2].forEach(point => {
-                        const coords = getPointGridCoords(row, col, point);
-                        if (coords && pointGrid[coords.i][coords.j]) {
-                            pointGrid[coords.i][coords.j] = pointGrid[coords.i][coords.j].filter(
-                                info => info.row !== row || info.col !== col
-                            );
-                        }
-                    });
-                    grid[row][col] = null;
-                    const ctx = cell.querySelector('canvas').getContext('2d');
-                    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
-                    cell.classList.remove('occupied');
-                }
+            // Fin du tracé : ajouter le scintillement
+            cells.forEach(({ cell }) => {
+                cell.classList.add('sparkle');
             });
-            updateScore(uniquePieces.size);
+
+            // Supprimer les pièces après le scintillement
+            setTimeout(() => {
+                cells.forEach(({ row, col, cell }) => {
+                    const piece = grid[row][col];
+                    if (piece) {
+                        [piece.point1, piece.point2].forEach(point => {
+                            const coords = getPointGridCoords(row, col, point);
+                            if (coords && pointGrid[coords.i][coords.j]) {
+                                pointGrid[coords.i][coords.j] = pointGrid[coords.i][coords.j].filter(
+                                    info => info.row !== row || info.col !== col
+                                );
+                            }
+                        });
+                        grid[row][col] = null;
+                        const ctx = cell.querySelector('canvas').getContext('2d');
+                        ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                        cell.classList.remove('sparkle');
+                        cell.classList.remove('occupied');
+                    }
+                });
+                updateScore(uniquePieces.size);
+            }, sparkleDuration);
         }
     }
 
