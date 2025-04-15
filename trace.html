@@ -191,24 +191,25 @@
 
         // Generate 5 random pieces
         function generatePieces() {
-            pieces = [];
-            const piecesDiv = document.getElementById('pieces');
-            piecesDiv.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const piece = generateRandomPiece();
-                pieces.push(piece);
-                const pieceDiv = document.createElement('div');
-                pieceDiv.className = 'piece';
-                pieceDiv.dataset.index = i;
-                const canvas = document.createElement('canvas');
-                canvas.width = CELL_SIZE;
-                canvas.height = CELL_SIZE;
-                pieceDiv.appendChild(canvas);
-                drawPiece(canvas, piece);
-                pieceDiv.addEventListener('click', (event) => selectPiece(i, event));
-                piecesDiv.appendChild(pieceDiv);
-            }
-        }
+    pieces = [];
+    const piecesDiv = document.getElementById('pieces');
+    piecesDiv.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+        const piece = generateRandomPiece();
+        pieces.push(piece);
+        const pieceDiv = document.createElement('div');
+        pieceDiv.className = 'piece';
+        pieceDiv.dataset.index = i;
+        const canvas = document.createElement('canvas');
+        canvas.width = CELL_SIZE;
+        canvas.height = CELL_SIZE;
+        pieceDiv.appendChild(canvas);
+        drawPiece(canvas, piece);
+        pieceDiv.clickHandler = (event) => selectPiece(i, event);
+        pieceDiv.addEventListener('click', pieceDiv.clickHandler);
+        piecesDiv.appendChild(pieceDiv);
+    }
+}
 
         // Generate a random piece
         function generateRandomPiece() {
@@ -238,9 +239,9 @@
     event.preventDefault();
     if (gameOver) return;
     const pieceDivs = document.querySelectorAll('.piece');
-    // Vérifier que l'index est valide et que la pièce existe
-    if (index >= pieceDivs.length || !pieces[index]) {
-        return; // Sortir si la pièce n'est pas disponible
+    const pieceDiv = Array.from(pieceDivs).find(p => p.dataset.index == index);
+    if (!pieceDiv || !pieces[index]) {
+        return; // Sortir si la pièce n'existe pas ou n'est pas valide
     }
     pieceDivs.forEach(p => p.style.border = '1px solid #333');
     if (selectedPieceIndex === index) {
@@ -249,49 +250,61 @@
     } else {
         selectedPiece = pieces[index];
         selectedPieceIndex = index;
-        pieceDivs[index].style.border = '2px solid blue';
+        pieceDiv.style.border = '2px solid blue';
     }
 }
 
         // Place a piece on the grid
         function placePiece(row, col) {
-            if (gameOver || !selectedPiece || grid[row][col]) return;
-            grid[row][col] = { ...selectedPiece };
-            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-            cell.classList.add('occupied');
-            drawPiece(cell.querySelector('canvas'), grid[row][col]);
+    if (gameOver || !selectedPiece || grid[row][col]) return;
+    grid[row][col] = { ...selectedPiece };
+    const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    cell.classList.add('occupied');
+    drawPiece(cell.querySelector('canvas'), grid[row][col]);
 
-            // Update pointGrid
-            const points = [selectedPiece.point1, selectedPiece.point2];
-            points.forEach(point => {
-                const coords = getPointGridCoords(row, col, point);
-                if (coords) {
-                    pointGrid[coords.i][coords.j].push({
-                        row,
-                        col,
-                        points: [point.label, points.find(p => p !== point).label]
-                    });
-                }
+    // Update pointGrid
+    const points = [selectedPiece.point1, selectedPiece.point2];
+    points.forEach(point => {
+        const coords = getPointGridCoords(row, col, point);
+        if (coords) {
+            pointGrid[coords.i][coords.j].push({
+                row,
+                col,
+                points: [point.label, points.find(p => p !== point).label]
             });
-
-            // Remove the piece from the bottom
-            const pieceDiv = document.querySelector(`.piece[data-index="${selectedPieceIndex}"]`);
-            if (pieceDiv) pieceDiv.remove();
-            pieces[selectedPieceIndex] = null;
-            selectedPiece = null;
-            selectedPieceIndex = null;
-            document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
-
-            // Check for closed shape
-            checkClosedShape(row, col, points);
-
-            // Generate new pieces only if all 5 are used
-            if (pieces.every(p => p === null)) {
-                generatePieces();
-            }
-
-            checkGameOver();
         }
+    });
+
+    // Remove the piece from the bottom
+    const pieceDiv = document.querySelector(`.piece[data-index="${selectedPieceIndex}"]`);
+    if (pieceDiv) pieceDiv.remove();
+    
+    // Remove the piece from pieces and update indices
+    pieces.splice(selectedPieceIndex, 1);
+    selectedPiece = null;
+    selectedPieceIndex = null;
+
+    // Update data-index for remaining pieces
+    const remainingPieceDivs = document.querySelectorAll('.piece');
+    remainingPieceDivs.forEach((div, i) => {
+        div.dataset.index = i;
+        div.removeEventListener('click', div.clickHandler); // Nettoyer l'ancien écouteur
+        div.clickHandler = () => selectPiece(i, event);
+        div.addEventListener('click', div.clickHandler);
+    });
+
+    document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
+
+    // Check for closed shape
+    checkClosedShape(row, col, points);
+
+    // Generate new pieces only if all 5 are used
+    if (pieces.length === 0) {
+        generatePieces();
+    }
+
+    checkGameOver();
+}
 
         // Check for closed shapes
         function checkClosedShape(row, col, points) {
