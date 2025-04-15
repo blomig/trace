@@ -169,7 +169,18 @@
             }
             return null;
         }
-
+        // calcul du score
+        function calculateScore(pieceCount) {
+    if (pieceCount <= 4) {
+        return pieceCount;
+    } else if (pieceCount <= 9) {
+        return pieceCount + 5;
+    } else if (pieceCount <= 14) {
+        return pieceCount + 10;
+    } else {
+        return pieceCount + 15; // Bonus pour figures très grandes
+    }
+}
         // Initialize grid
         function initializeGrid() {
             const gridDiv = document.getElementById('grid');
@@ -499,10 +510,10 @@
 
         // Update score
         function updateScore(piecesRemoved) {
-            score += piecesRemoved;
-            document.getElementById('score').textContent = `Score: ${score}`;
-            checkGameOver();
-        }
+    score += calculateScore(piecesRemoved);
+    document.getElementById('score').textContent = `Score: ${score}`;
+    checkGameOver();
+}
 
         // Check game over
         function checkGameOver() {
