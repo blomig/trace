@@ -202,7 +202,7 @@
         }
 
         // Generate 5 random pieces
-        function generatePieces() {
+      function generatePieces() {
     pieces = [];
     const piecesDiv = document.getElementById('pieces');
     piecesDiv.innerHTML = '';
@@ -212,11 +212,11 @@
         const pieceDiv = document.createElement('div');
         pieceDiv.className = 'piece';
         pieceDiv.dataset.index = i;
-        const canvas = document.createElement('canvas');
-        canvas.width = CELL_SIZE;
-        canvas.height = CELL_SIZE;
-        pieceDiv.appendChild(canvas);
-        drawPiece(canvas, piece);
+        const img = document.createElement('img');
+        img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+        img.width = CELL_SIZE;
+        img.height = CELL_SIZE;
+        pieceDiv.appendChild(img);
         pieceDiv.clickHandler = (event) => selectPiece(i, event);
         pieceDiv.addEventListener('click', pieceDiv.clickHandler);
         piecesDiv.appendChild(pieceDiv);
@@ -234,18 +234,7 @@
             };
         }
 
-        // Draw a piece on canvas
-        function drawPiece(canvas, piece) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
-            ctx.beginPath();
-            ctx.moveTo(piece.point1.x, piece.point1.y);
-            ctx.lineTo(25, 25); // Center
-            ctx.lineTo(piece.point2.x, piece.point2.y);
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
+        
         // sélection des pièces
         function selectPiece(index, event) {
     event.preventDefault();
@@ -272,7 +261,12 @@
     grid[row][col] = { ...selectedPiece };
     const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
     cell.classList.add('occupied');
-    drawPiece(cell.querySelector('canvas'), grid[row][col]);
+    const img = document.createElement('img');
+    img.src = `images/piece_${selectedPiece.point1.label}_${selectedPiece.point2.label}.png`;
+    img.width = CELL_SIZE;
+    img.height = CELL_SIZE;
+    cell.innerHTML = ''; // Supprime le canvas
+    cell.appendChild(img);
 
     // Update pointGrid
     const points = [selectedPiece.point1, selectedPiece.point2];
@@ -300,7 +294,7 @@
     const remainingPieceDivs = document.querySelectorAll('.piece');
     remainingPieceDivs.forEach((div, i) => {
         div.dataset.index = i;
-        div.removeEventListener('click', div.clickHandler); // Nettoyer l'ancien écouteur
+        div.removeEventListener('click', div.clickHandler);
         div.clickHandler = () => selectPiece(i, event);
         div.addEventListener('click', div.clickHandler);
     });
@@ -398,14 +392,31 @@
         cells.push({ row, col, cell });
     });
 
+    // Remplacer les images par des canvas pour l'animation
+    cells.forEach(({ cell, row, col }) => {
+        const piece = grid[row][col];
+        cell.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        canvas.width = CELL_SIZE;
+        canvas.height = CELL_SIZE;
+        cell.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        // Dessiner l'image de base
+        const img = new Image();
+        img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+        };
+    });
+
     // Animer le tracé de la figure en rouge
-    const traceDuration = 1500; // Durée du tracé en ms
-    const sparkleDuration = 600; // Durée du scintillement en ms
+    const traceDuration = 1500;
+    const sparkleDuration = 600;
     const startTime = performance.now();
 
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / traceDuration, 1); // Progression de 0 à 1 pour le tracé
+        const progress = Math.min(elapsed / traceDuration, 1);
 
         cells.forEach(({ row, col, cell }) => {
             const piece = grid[row][col];
@@ -414,16 +425,12 @@
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
 
-            // Redessiner la pièce originale en noir
-            ctx.beginPath();
-            ctx.moveTo(piece.point1.x, piece.point1.y);
-            ctx.lineTo(25, 25);
-            ctx.lineTo(piece.point2.x, piece.point2.y);
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            // Redessiner l'image
+            const img = new Image();
+            img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+            ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
 
-            // Trouver les points à tracer en rouge pour cette pièce
+            // Trouver les points à tracer
             const pathEntry = path.find(p => p.row === row && p.col === col);
             if (!pathEntry) return;
 
@@ -435,11 +442,11 @@
             const startPoint = pointLabels[0];
             const endPoint = pointLabels[1];
 
-            // Calculer les segments à dessiner en fonction du progrès
+            // Calculer les segments
             ctx.beginPath();
             const segments = [
-                { from: startPoint, to: { x: 25, y: 25 } }, // Bord vers centre
-                { from: { x: 25, y: 25 }, to: endPoint }    // Centre vers autre bord
+                { from: startPoint, to: { x: 25, y: 25 } },
+                { from: { x: 25, y: 25 }, to: endPoint }
             ];
 
             let totalLength = 0;
@@ -475,12 +482,10 @@
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
-            // Fin du tracé : ajouter le scintillement
             cells.forEach(({ cell }) => {
                 cell.classList.add('sparkle');
             });
 
-            // Supprimer les pièces après le scintillement
             setTimeout(() => {
                 cells.forEach(({ row, col, cell }) => {
                     const piece = grid[row][col];
@@ -494,8 +499,7 @@
                             }
                         });
                         grid[row][col] = null;
-                        const ctx = cell.querySelector('canvas').getContext('2d');
-                        ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                        cell.innerHTML = '';
                         cell.classList.remove('sparkle');
                         cell.classList.remove('occupied');
                     }
