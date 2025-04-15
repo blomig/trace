@@ -233,22 +233,25 @@
             ctx.lineWidth = 2;
             ctx.stroke();
         }
-
-        // Select or deselect a piece
+        // sélection des pièces
         function selectPiece(index, event) {
-            event.preventDefault();
-            if (gameOver) return;
-            const pieceDivs = document.querySelectorAll('.piece');
-            pieceDivs.forEach(p => p.style.border = '1px solid #333');
-            if (selectedPieceIndex === index) {
-                selectedPiece = null;
-                selectedPieceIndex = null;
-            } else {
-                selectedPiece = pieces[index];
-                selectedPieceIndex = index;
-                pieceDivs[index].style.border = '2px solid blue';
-            }
-        }
+    event.preventDefault();
+    if (gameOver) return;
+    const pieceDivs = document.querySelectorAll('.piece');
+    // Vérifier que l'index est valide et que la pièce existe
+    if (index >= pieceDivs.length || !pieces[index]) {
+        return; // Sortir si la pièce n'est pas disponible
+    }
+    pieceDivs.forEach(p => p.style.border = '1px solid #333');
+    if (selectedPieceIndex === index) {
+        selectedPiece = null;
+        selectedPieceIndex = null;
+    } else {
+        selectedPiece = pieces[index];
+        selectedPieceIndex = index;
+        pieceDivs[index].style.border = '2px solid blue';
+    }
+}
 
         // Place a piece on the grid
         function placePiece(row, col) {
