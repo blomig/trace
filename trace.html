@@ -251,7 +251,7 @@
     } else {
         selectedPiece = pieces[index];
         selectedPieceIndex = index;
-        pieceDiv.style.border = '2px solid blue';
+        pieceDiv.style.border = '2px solid #00FF00';
     }
 }
 
@@ -457,8 +457,8 @@
             });
 
             let currentLength = progress * totalLength;
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 4;
 
             for (let seg of segments) {
                 const dx = seg.to.x - seg.from.x;
