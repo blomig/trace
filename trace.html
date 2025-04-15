@@ -18,13 +18,13 @@
             text-align: center;
         }
         #grid {
-            display: grid;
-            grid-template-columns: repeat(7, 50px);
-            gap: 2px;
-            background-color: #333;
-            padding: 2px;
-            margin-bottom: 20px;
-        }
+    display: grid;
+    grid-template-columns: repeat(7, 50px);
+    gap: 0; /* Supprime l'espace entre les cellules */
+    background-color: #333;
+    padding: 2px;
+    margin-bottom: 20px;
+}
         .cell {
             width: 50px;
             height: 50px;
@@ -251,7 +251,7 @@
     } else {
         selectedPiece = pieces[index];
         selectedPieceIndex = index;
-        pieceDiv.style.border = '2px solid #00FF00';
+        pieceDiv.style.border = '2px solid #2aaad6';
     }
 }
 
@@ -457,7 +457,7 @@
             });
 
             let currentLength = progress * totalLength;
-            ctx.strokeStyle = '#00FF00';
+            ctx.strokeStyle = '#2aaad6';
             ctx.lineWidth = 4;
 
             for (let seg of segments) {
