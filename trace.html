@@ -267,7 +267,10 @@
     img.height = CELL_SIZE;
     cell.innerHTML = ''; // Supprime le canvas
     cell.appendChild(img);
-
+    
+    // Ajouter le son
+    const placeSound = new Audio('place.mp3');
+    placeSound.play();
     // Update pointGrid
     const points = [selectedPiece.point1, selectedPiece.point2];
     points.forEach(point => {
@@ -508,7 +511,9 @@
             }, sparkleDuration);
         }
     }
-
+    // Ajouter le son UNE SEULE FOIS ici
+    const patternSound = new Audio('pattern.wav');
+    patternSound.play();
     requestAnimationFrame(animate);
 }
 
