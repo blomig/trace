@@ -174,11 +174,11 @@
     if (pieceCount <= 4) {
         return pieceCount;
     } else if (pieceCount <= 9) {
-        return pieceCount + 5;
-    } else if (pieceCount <= 14) {
         return pieceCount + 10;
+    } else if (pieceCount <= 14) {
+        return pieceCount + 20;
     } else {
-        return pieceCount + 15; // Bonus pour figures très grandes
+        return pieceCount + 50; // Bonus pour figures très grandes
     }
 }
         // Initialize grid
