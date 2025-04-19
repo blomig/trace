@@ -668,7 +668,7 @@ function startBackgroundMusic() {
         osc.connect(frequencyMod);
 
         const gainNode = audioContext.createGain();
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
         frequencyMod.connect(gainNode);
         gainNode.connect(audioContext.destination);
 
@@ -680,7 +680,7 @@ function startBackgroundMusic() {
         }, 5000);
 
         setInterval(() => {
-            const newGain = 0.05 + Math.random() * 0.05;
+            const newGain = 0.4 + Math.random() * 0.2;
             gainNode.gain.linearRampToValueAtTime(newGain, audioContext.currentTime + 5);
         }, 7000);
 
@@ -699,7 +699,7 @@ function startBackgroundMusic() {
     convolver.buffer = impulseResponse;
 
     const reverbGain = audioContext.createGain();
-    reverbGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+    reverbGain.gain.setValueAtTime(0.5, audioContext.currentTime);
     oscillators.forEach(osc => {
         const gainNode = osc.frequencyNode || osc;
         gainNode.connect(convolver);
@@ -722,7 +722,7 @@ startBackgroundMusic();
 
         // Augmentation rapide de la fréquence et du volume
         const peakFreq = baseFreq + 50; // +50 Hz
-        const peakGain = baseGain + 0.1; // +0.1 de volume
+        const peakGain = baseGain + 0.3; // +0.1 de volume
 
         // Transition rapide vers le pic
         osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
@@ -744,7 +744,7 @@ startBackgroundMusic();
 
         // Perturbation plus marquée pour une figure
         const peakFreq = baseFreq + 80; // +80 Hz (plus marqué que pour le placement)
-        const peakGain = baseGain + 0.15; // +0.15 de volume
+        const peakGain = baseGain + 0.4; // +0.15 de volume
 
         // Transition rapide vers le pic
         osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
