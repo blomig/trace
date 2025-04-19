@@ -305,8 +305,10 @@
     console.log("Game container shown");
     startBackgroundMusic();
     console.log("startBackgroundMusic called");
-    toggleMusic();
-    console.log("toggleMusic called");
+    const musicButton = document.getElementById('music-toggle');
+    musicButton.textContent = isMusicEnabled ? 'Nappe ON' : 'Nappe OFF';
+    const soundsButton = document.getElementById('sounds-toggle');
+    soundsButton.textContent = areSoundsEnabled ? 'Sons ON' : 'Sons OFF';
 }
 
         
