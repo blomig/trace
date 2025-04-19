@@ -308,6 +308,7 @@
     // Ajouter le son
     const placeSound = new Audio('place.mp3');
     placeSound.play();
+            createPlacementPerturbation(); // Ajoute cette ligne
     // Update pointGrid
     const points = [selectedPiece.point1, selectedPiece.point2];
     points.forEach(point => {
@@ -478,7 +479,7 @@ if (!hasClosedShape) {
 
     const patternSound = new Audio('pattern.wav');
     patternSound.play();
-
+    createPatternPerturbation(); // Ajoute cette ligne
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / traceDuration, 1);
@@ -641,6 +642,145 @@ for (let i = 0; i < GRID_SIZE; i++) {
         initializeGrid();
         generatePieces();
         updateScoreDisplay();
+        
+    // ajout de la fonction son 
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let isPlaying = false;
+let oscillators = []; // Stocke les oscillateurs globalement
+let gainNodes = []; // Stocke les gainNodes globalement
+
+function startBackgroundMusic() {
+    if (isPlaying) return;
+    isPlaying = true;
+
+    oscillators = [];
+    gainNodes = [];
+    const numOscillators = 3;
+    const baseFrequencies = [110, 220, 330];
+
+    for (let i = 0; i < numOscillators; i++) {
+        const osc = audioContext.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(baseFrequencies[i], audioContext.currentTime);
+
+        const frequencyMod = audioContext.createGain();
+        frequencyMod.gain.setValueAtTime(0.5, audioContext.currentTime);
+        osc.connect(frequencyMod);
+
+        const gainNode = audioContext.createGain();
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        frequencyMod.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        osc.start();
+
+        setInterval(() => {
+            const newFreq = baseFrequencies[i] + (Math.random() - 0.5) * 20;
+            osc.frequency.linearRampToValueAtTime(newFreq, audioContext.currentTime + 5);
+        }, 5000);
+
+        setInterval(() => {
+            const newGain = 0.05 + Math.random() * 0.05;
+            gainNode.gain.linearRampToValueAtTime(newGain, audioContext.currentTime + 5);
+        }, 7000);
+
+        oscillators.push(osc);
+        gainNodes.push(gainNode);
+    }
+
+    const convolver = audioContext.createConvolver();
+    const impulseResponse = audioContext.createBuffer(2, audioContext.sampleRate * 2, audioContext.sampleRate);
+    const impulseData = impulseResponse.getChannelData(0);
+    const impulseDataR = impulseResponse.getChannelData(1);
+    for (let i = 0; i < impulseData.length; i++) {
+        impulseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseData.length, 3);
+        impulseDataR[i] = impulseData[i];
+    }
+    convolver.buffer = impulseResponse;
+
+    const reverbGain = audioContext.createGain();
+    reverbGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+    oscillators.forEach(osc => {
+        const gainNode = osc.frequencyNode || osc;
+        gainNode.connect(convolver);
+    });
+    convolver.connect(reverbGain);
+    reverbGain.connect(audioContext.destination);
+}
+
+// Lancer la musique au démarrage
+startBackgroundMusic();
+         
+        // fonction perturbation
+        function createPlacementPerturbation() {
+    if (!isPlaying) return;
+
+    oscillators.forEach((osc, i) => {
+        const baseFreq = osc.frequency.value;
+        const gainNode = gainNodes[i];
+        const baseGain = gainNode.gain.value;
+
+        // Augmentation rapide de la fréquence et du volume
+        const peakFreq = baseFreq + 50; // +50 Hz
+        const peakGain = baseGain + 0.1; // +0.1 de volume
+
+        // Transition rapide vers le pic
+        osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(peakGain, audioContext.currentTime);
+
+        // Retour progressif à la normale sur 2 secondes
+        osc.frequency.linearRampToValueAtTime(baseFreq, audioContext.currentTime + 2);
+        gainNode.gain.linearRampToValueAtTime(baseGain, audioContext.currentTime + 2);
+    });
+}
+        // Fonction perturbation Pattern
+        function createPatternPerturbation() {
+    if (!isPlaying) return;
+
+    oscillators.forEach((osc, i) => {
+        const baseFreq = osc.frequency.value;
+        const gainNode = gainNodes[i];
+        const baseGain = gainNode.gain.value;
+
+        // Perturbation plus marquée pour une figure
+        const peakFreq = baseFreq + 80; // +80 Hz (plus marqué que pour le placement)
+        const peakGain = baseGain + 0.15; // +0.15 de volume
+
+        // Transition rapide vers le pic
+        osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(peakGain, audioContext.currentTime);
+
+        // Retour progressif sur 3 secondes
+        osc.frequency.linearRampToValueAtTime(baseFreq, audioContext.currentTime + 3);
+        gainNode.gain.linearRampToValueAtTime(baseGain, audioContext.currentTime + 3);
+    });
+
+    // Ajouter un effet de réverbération temporaire
+    const reverbGainNode = audioContext.createGain();
+    reverbGainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+    reverbGainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 3); // Diminue sur 3s
+    const convolver = audioContext.createConvolver();
+    const impulseResponse = audioContext.createBuffer(2, audioContext.sampleRate * 1, audioContext.sampleRate);
+    const impulseData = impulseResponse.getChannelData(0);
+    const impulseDataR = impulseResponse.getChannelData(1);
+    for (let i = 0; i < impulseData.length; i++) {
+        impulseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseData.length, 2);
+        impulseDataR[i] = impulseData[i];
+    }
+    convolver.buffer = impulseResponse;
+    oscillators.forEach((osc, i) => {
+        const gainNode = gainNodes[i];
+        gainNode.connect(convolver);
+    });
+    convolver.connect(reverbGainNode);
+    reverbGainNode.connect(audioContext.destination);
+
+    // Déconnecter après 3 secondes
+    setTimeout(() => {
+        reverbGainNode.disconnect();
+        convolver.disconnect();
+    }, 3000);
+}
     </script>
 </body>
 </html>
