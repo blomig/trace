@@ -536,11 +536,14 @@ if (!hasClosedShape) {
         // Update score
         function updateScore(piecesRemoved) {
     score += calculateScore(piecesRemoved);
-    const scoreDiv = document.getElementById('score');
-    scoreDiv.innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
+    updateScoreDisplay();
     checkGameOver();
 }
-
+    // Update score display
+        function updateScoreDisplay() {
+    const scoreDiv = document.getElementById('score');
+    scoreDiv.innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
+}
         // Check game over
         function checkGameOver() {
             let hasMove = false;
@@ -570,7 +573,7 @@ if (!hasClosedShape) {
             score = 0;
             totalPiecesPlayed = 0; // Réinitialise N
             maxFigureSize = 0; // Réinitialise Max
-            document.getElementById('score').innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
+            updateScoreDisplay();
             document.getElementById('game-over').style.display = 'none';
             // Reset grid
 for (let i = 0; i < GRID_SIZE; i++) {
@@ -594,7 +597,7 @@ for (let i = 0; i < GRID_SIZE; i++) {
         // Start the game
         initializeGrid();
         generatePieces();
-        document.getElementById('score').innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
+        updateScoreDisplay();
     </script>
 </body>
 </html>
