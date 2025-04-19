@@ -555,15 +555,14 @@ if (!hasClosedShape) {
             document.getElementById('score').textContent = `Score: ${score}`;
             document.getElementById('game-over').style.display = 'none';
             // Reset grid
-            for (let i = 0; i < GRID_SIZE; i++) {
-                for (let j = 0; j < GRID_SIZE; j++) {
-                    grid[i][j] = null;
-                    const cell = document.querySelector(`.cell[data-row="${i}"][data-col="${j}"]`);
-                    const ctx = cell.querySelector('canvas').getContext('2d');
-                    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
-                    cell.classList.remove('occupied');
-                }
-            }
+for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+        grid[i][j] = null;
+        const cell = document.querySelector(`.cell[data-row="${i}"][data-col="${j}"]`);
+        cell.innerHTML = ''; // Supprime l'image
+        cell.classList.remove('occupied');
+    }
+}
             // Reset pointGrid
             for (let i = 0; i < POINT_GRID_SIZE; i++) {
                 for (let j = 0; j < POINT_GRID_SIZE; j++) {
