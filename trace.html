@@ -127,9 +127,36 @@
         opacity: 0; /* Disparition */
     }
 }
+        #start-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+#start-screen button {
+    padding: 15px 30px;
+    font-size: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#start-screen button:hover {
+    background-color: #45a049;
+}
     </style>
 </head>
 <body>
+    <div id="start-screen">
+    <button onclick="startGame()">Démarrer le jeu</button>
+    </div>
     <div id="game-container">
         <div id="score">Score: 0</div>
         <div id="grid"></div>
@@ -236,7 +263,14 @@
                 }
             }
         }
+         // fonction start Game
+     function startGame() {
+         document.getElementById('start-screen').style.display = 'none';
+         document.getElementById('game-container').style.display = 'block';
+         startBackgroundMusic(); // Démarre la nappe sonore après interaction
+     }
 
+        
         // Generate 5 random pieces
       function generatePieces() {
     pieces = [];
@@ -650,7 +684,7 @@ let oscillators = []; // Stocke les oscillateurs globalement
 let gainNodes = []; // Stocke les gainNodes globalement
 
 function startBackgroundMusic() {
-    console.log("startBackgroundMusic called"); // Trace 1
+    console.log("startBackgroundMusic called");
     if (isPlaying) return;
     isPlaying = true;
 
@@ -671,8 +705,9 @@ function startBackgroundMusic() {
         const gainNode = audioContext.createGain();
         gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
         frequencyMod.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        console.log(`Oscillator ${i} started with frequency ${baseFrequencies[i]}`); // Trace 2
+        // Ne connecte pas encore à destination ici
+
+        console.log(`Oscillator ${i} started with frequency ${baseFrequencies[i]}`);
         osc.start();
 
         setInterval(() => {
@@ -689,6 +724,7 @@ function startBackgroundMusic() {
         gainNodes.push(gainNode);
     }
 
+    // Créer une chaîne de réverbération
     const convolver = audioContext.createConvolver();
     const impulseResponse = audioContext.createBuffer(2, audioContext.sampleRate * 2, audioContext.sampleRate);
     const impulseData = impulseResponse.getChannelData(0);
@@ -701,17 +737,21 @@ function startBackgroundMusic() {
 
     const reverbGain = audioContext.createGain();
     reverbGain.gain.setValueAtTime(0.5, audioContext.currentTime);
-    oscillators.forEach(osc => {
-        const gainNode = osc.frequencyNode || osc;
-        gainNode.connect(convolver);
-    });
     convolver.connect(reverbGain);
     reverbGain.connect(audioContext.destination);
-    console.log("Reverb connected"); // Trace 3
+
+    // Connecter chaque gainNode à la réverbération ET directement à la sortie
+    oscillators.forEach((osc, i) => {
+        const gainNode = gainNodes[i];
+        gainNode.connect(convolver); // Chemin avec réverbération
+        gainNode.connect(audioContext.destination); // Chemin direct (son sec)
+    });
+
+    console.log("Reverb connected");
 }
 
-// Lancer la musique au démarrage
-startBackgroundMusic();
+// Lancer la musique au démarrage NON 
+// startBackgroundMusic();
          
         // fonction perturbation
         function createPlacementPerturbation() {
