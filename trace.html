@@ -279,6 +279,7 @@
     cell.innerHTML = ''; // Supprime le canvas
     cell.appendChild(img);
     totalPiecesPlayed++; // Incrémente N
+    updateScoreDisplay(); // Ajoute cette ligne        
     // Ajouter le son
     const placeSound = new Audio('place.mp3');
     placeSound.play();
