@@ -540,12 +540,15 @@ if (!hasClosedShape) {
                 }
                 if (hasMove) break;
             }
+            console.log('checkGameOver: hasMove=', hasMove, 'grid=', grid); // Ajoute cette ligne
             if (!hasMove) {
                 gameOver = true;
                 const gameOverDiv = document.getElementById('game-over');
                 document.getElementById('final-score').textContent = score;
                 gameOverDiv.style.display = 'block';
-            }
+            } else {
+        gameOver = false; // Ajoute cette ligne pour réinitialiser gameOver si la partie continue
+    }
         }
 
         // Restart the game
