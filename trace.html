@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Puzzle Game</title>
+    <title>Figure it!</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -56,8 +56,17 @@
             height: 100%;
         }
         #score {
-            font-size: 24px;
-            margin-bottom: 20px;
+        font-size: 24px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        }
+
+        #score .stats {
+        font-size: 12px; /* Petits caractères */
+        margin-left: 20px; /* Décalage à droite */
+        color: #666; /* Couleur plus discrète */
         }
         #game-over {
             display: none;
@@ -119,6 +128,8 @@
         let selectedPieceIndex = null;
         let score = 0;
         let gameOver = false;
+        let totalPiecesPlayed = 0; // N: nombre de pièces jouées
+        let maxFigureSize = 0; // Max: taille de la plus grande figure
 
         // Possible edge points with labels
         const edgePoints = [
@@ -267,7 +278,7 @@
     img.height = CELL_SIZE;
     cell.innerHTML = ''; // Supprime le canvas
     cell.appendChild(img);
-    
+    totalPiecesPlayed++; // Incrémente N
     // Ajouter le son
     const placeSound = new Audio('place.mp3');
     placeSound.play();
@@ -510,6 +521,7 @@ if (!hasClosedShape) {
                         cell.classList.remove('occupied');
                     }
                 });
+                maxFigureSize = Math.max(maxFigureSize, uniquePieces.size); // Met à jour Max si nécessaire
                 updateScore(uniquePieces.size);
                 checkGameOver();
             }, sparkleDuration);
@@ -524,7 +536,8 @@ if (!hasClosedShape) {
         // Update score
         function updateScore(piecesRemoved) {
     score += calculateScore(piecesRemoved);
-    document.getElementById('score').textContent = `Score: ${score}`;
+    const scoreDiv = document.getElementById('score');
+    scoreDiv.innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
     checkGameOver();
 }
 
@@ -555,7 +568,9 @@ if (!hasClosedShape) {
         function restartGame() {
             gameOver = false;
             score = 0;
-            document.getElementById('score').textContent = `Score: ${score}`;
+            totalPiecesPlayed = 0; // Réinitialise N
+            maxFigureSize = 0; // Réinitialise Max
+            document.getElementById('score').innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
             document.getElementById('game-over').style.display = 'none';
             // Reset grid
 for (let i = 0; i < GRID_SIZE; i++) {
@@ -579,6 +594,7 @@ for (let i = 0; i < GRID_SIZE; i++) {
         // Start the game
         initializeGrid();
         generatePieces();
+        document.getElementById('score').innerHTML = `Score: ${score} <span class="stats">N=${totalPiecesPlayed} Max=${maxFigureSize}</span>`;
     </script>
 </body>
 </html>
