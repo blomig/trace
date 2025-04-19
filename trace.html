@@ -311,8 +311,10 @@
     if (pieces.length === 0) {
         generatePieces();
     }
-
+// Vérifie la fin de partie si aucune figure n’a été détectée
+if (!hasClosedShape) {
     checkGameOver();
+}
 }
 
         // Check for closed shapes
@@ -326,10 +328,11 @@
                     if (findClosedPath(row, col, startPoint.label, visited, path)) {
                         console.log("Closed path found:", path);
                         highlightAndRemovePieces(path);
-                        return;
+                        return true;
                     }
                 }
             }
+            return false; // Aucune figure détectée
         }
 
         // Find a closed path
@@ -508,6 +511,7 @@
                     }
                 });
                 updateScore(uniquePieces.size);
+                checkGameOver();
             }, sparkleDuration);
         }
     }
