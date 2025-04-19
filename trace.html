@@ -105,7 +105,7 @@
 }
     .points-display {
     position: absolute;
-    color: #FFD700; /* Or, pour un effet "gagnant" */
+    color: #e821a6; /* Or, pour un effet "gagnant" */
     font-size: 12px; /* Taille initiale */
     font-weight: bold;
     pointer-events: none; /* Évite que le texte soit cliquable */
@@ -518,8 +518,8 @@ if (!hasClosedShape) {
             });
 
             let currentLength = progress * totalLength;
-            ctx.strokeStyle = '#FFFF00';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#e821a6';
+            ctx.lineWidth = 6;
 
             for (let seg of segments) {
                 const dx = seg.to.x - seg.from.x;
