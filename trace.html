@@ -298,11 +298,16 @@
         }
          // fonction start Game
      function startGame() {
-         document.getElementById('start-screen').style.display = 'none';
-         document.getElementById('game-container').style.display = 'block';
-         startBackgroundMusic(); // Démarre la nappe sonore après interaction
-         toggleMusic(); // Ajoute cette ligne pour initialiser l’état du bouton
-     }
+    console.log("startGame called");
+    document.getElementById('start-screen').style.display = 'none';
+    console.log("Start screen hidden");
+    document.getElementById('game-container').style.display = 'block';
+    console.log("Game container shown");
+    startBackgroundMusic();
+    console.log("startBackgroundMusic called");
+    toggleMusic();
+    console.log("toggleMusic called");
+}
 
         
         // Generate 5 random pieces
@@ -866,17 +871,16 @@ function startBackgroundMusic() {
     }, 3000);
 }
 
-        function toggleMusic() {
+      function toggleMusic() {
+    console.log("toggleMusic called, isMusicEnabled:", isMusicEnabled);
     isMusicEnabled = !isMusicEnabled;
     const musicButton = document.getElementById('music-toggle');
     musicButton.textContent = isMusicEnabled ? 'Nappe ON' : 'Nappe OFF';
-
     if (isMusicEnabled) {
         if (!isPlaying) {
             startBackgroundMusic();
         }
     } else {
-        // Arrêter les oscillateurs
         oscillators.forEach(osc => osc.stop());
         oscillators = [];
         gainNodes = [];
@@ -885,6 +889,7 @@ function startBackgroundMusic() {
 }
 
 function toggleSounds() {
+    console.log("toggleSounds called, areSoundsEnabled:", areSoundsEnabled);
     areSoundsEnabled = !areSoundsEnabled;
     const soundsButton = document.getElementById('sounds-toggle');
     soundsButton.textContent = areSoundsEnabled ? 'Sons ON' : 'Sons OFF';
