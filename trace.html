@@ -305,7 +305,7 @@
     document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
 
     // Check for closed shape
-    checkClosedShape(row, col, points);
+    const hasClosedShape = checkClosedShape(row, col, points);
 
     // Generate new pieces only if all 5 are used
     if (pieces.length === 0) {
