@@ -650,6 +650,7 @@ let oscillators = []; // Stocke les oscillateurs globalement
 let gainNodes = []; // Stocke les gainNodes globalement
 
 function startBackgroundMusic() {
+    console.log("startBackgroundMusic called"); // Trace 1
     if (isPlaying) return;
     isPlaying = true;
 
@@ -671,7 +672,7 @@ function startBackgroundMusic() {
         gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
         frequencyMod.connect(gainNode);
         gainNode.connect(audioContext.destination);
-
+        console.log(`Oscillator ${i} started with frequency ${baseFrequencies[i]}`); // Trace 2
         osc.start();
 
         setInterval(() => {
@@ -706,6 +707,7 @@ function startBackgroundMusic() {
     });
     convolver.connect(reverbGain);
     reverbGain.connect(audioContext.destination);
+    console.log("Reverb connected"); // Trace 3
 }
 
 // Lancer la musique au démarrage
