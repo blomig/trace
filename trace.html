@@ -756,6 +756,9 @@ createPatternPerturbation();
         function restartGame() {
             gameOver = false;
             score = 0;
+            flushCount = 1; // Ajoute ici
+    document.getElementById('flush-count').textContent = flushCount; // Ajoute ici
+    document.getElementById('flush-button').disabled = flushCount === 0; // Ajoute ici
             totalPiecesPlayed = 0; // Réinitialise N
             maxFigureSize = 0; // Réinitialise Max
             updateScoreDisplay();
