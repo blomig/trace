@@ -177,6 +177,37 @@
     flex-grow: 1; /* Le score prend l’espace restant et reste centré */
     text-align: center;
 }
+    #flush-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+#flush-button {
+    font-size: 10px;
+    padding: 4px 8px;
+    background-color: #ccc;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#flush-button:disabled {
+    background-color: #eee;
+    cursor: not-allowed;
+}
+
+#flush-button:hover:not(:disabled) {
+    background-color: #bbb;
+}
+
+#flush-count {
+    font-size: 10px;
+    margin-left: 10px;
+    color: #666;
+}
     </style>
 </head>
 <body>
@@ -191,6 +222,10 @@
     </div>
     <div id="grid"></div>
     <div id="pieces"></div>
+    <div id="flush-controls">
+        <button id="flush-button" onclick="flushPieces()">Flush</button>
+        <span id="flush-count">1</span>
+    </div>
     <div id="game-over">
         Fin de partie !<br>
         Score final : <span id="final-score"></span>
@@ -212,6 +247,7 @@
         let gameOver = false;
         let totalPiecesPlayed = 0; // N: nombre de pièces jouées
         let maxFigureSize = 0; // Max: taille de la plus grande figure
+        let flushCount = 1; // Compteur de flushes, initialisé à 1 au départ
 
         // Possible edge points with labels
         const edgePoints = [
@@ -294,12 +330,27 @@
             }
         }
          // fonction start Game
-     function startGame() {
+    function startGame() {
     console.log("startGame called");
     document.getElementById('start-screen').style.display = 'none';
     console.log("Start screen hidden");
     document.getElementById('game-container').style.display = 'block';
     console.log("Game container shown");
+
+    gameOver = false;
+    selectedPiece = null;
+    selectedPieceIndex = null;
+    console.log("Game state reset");
+
+    flushCount = 1; // Initialise le compteur de flushes
+    document.getElementById('flush-count').textContent = flushCount;
+    document.getElementById('flush-button').disabled = flushCount === 0;
+
+    initializeGrid();
+    generatePieces();
+    updateScoreDisplay();
+    console.log("Game reinitialized");
+
     startBackgroundMusic();
     console.log("startBackgroundMusic called");
     const musicButton = document.getElementById('music-toggle');
@@ -657,7 +708,19 @@ createPatternPerturbation();
 }
         // Update score
         function updateScore(piecesRemoved) {
+    const oldScore = score; // Score avant ajout
     score += calculateScore(piecesRemoved);
+    const newScore = score; // Score après ajout
+
+    // Ajouter un flush tous les 50 points
+    const oldFlushThreshold = Math.floor(oldScore / 50);
+    const newFlushThreshold = Math.floor(newScore / 50);
+    if (newFlushThreshold > oldFlushThreshold) {
+        flushCount += newFlushThreshold - oldFlushThreshold; // Ajoute un flush par tranche de 50 points
+        document.getElementById('flush-count').textContent = flushCount;
+        document.getElementById('flush-button').disabled = flushCount === 0;
+    }
+
     updateScoreDisplay();
     checkGameOver();
 }
@@ -891,6 +954,21 @@ function toggleSounds() {
     areSoundsEnabled = !areSoundsEnabled;
     const soundsButton = document.getElementById('sounds-toggle');
     soundsButton.textContent = areSoundsEnabled ? 'Sons ON' : 'Sons OFF';
+}
+
+        function flushPieces() {
+    if (flushCount <= 0 || gameOver) return; // Ne fait rien si pas de flush disponible ou partie terminée
+
+    flushCount--; // Décrémente le compteur
+    document.getElementById('flush-count').textContent = flushCount;
+    document.getElementById('flush-button').disabled = flushCount === 0;
+
+    // Vider les pièces disponibles
+    pieces = [];
+    document.getElementById('pieces').innerHTML = '';
+
+    // Générer de nouvelles pièces
+    generatePieces();
 }
     </script>
 </body>
