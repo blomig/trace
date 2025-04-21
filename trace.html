@@ -224,7 +224,7 @@
 </head>
 <body>
     <div id="start-screen">
-    <button onclick="startGame()">Démarrer le jeu</button>
+    <button id="start-button">Démarrer le jeu</button>
 </div>
 <div id="game-container" style="display: none;">
    <div id="controls">
@@ -1016,6 +1016,9 @@ function toggleSounds() {
     // Générer de nouvelles pièces
     generatePieces();
 }
+
+        // Attacher l’événement onclick dynamiquement
+document.getElementById('start-button').addEventListener('click', startGame);
     </script>
 </body>
 </html>
