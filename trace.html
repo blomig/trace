@@ -248,6 +248,7 @@
         let totalPiecesPlayed = 0; // N: nombre de pièces jouées
         let maxFigureSize = 0; // Max: taille de la plus grande figure
         let flushCount = 1; // Compteur de flushes, initialisé à 1 au départ
+        let baseFrequencies = [110, 220, 330]; // Déplace ici comme variable globale
 
         // Possible edge points with labels
         const edgePoints = [
@@ -788,13 +789,18 @@ for (let i = 0; i < GRID_SIZE; i++) {
         updateScoreDisplay();
         
     // ajout de la fonction son 
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let isPlaying = false;
-let oscillators = []; // Stocke les oscillateurs globalement
-let gainNodes = []; // Stocke les gainNodes globalement
-let isMusicEnabled = true; // État de la nappe sonore (true = ON, false = OFF)
-let areSoundsEnabled = true; // État des sons place.mp3 et pattern.wav (true = ON, false = OFF)
         
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let isPlaying = false;
+let oscillators = [];
+let harmonicOscillators = []; // Pour les oscillateurs harmoniques
+let lfoOscillators = []; // Pour les LFO principaux
+let lfoHarmonicOscillators = []; // Pour les LFO des harmoniques
+let gainNodes = [];
+let baseFrequencies = [110, 220, 330];
+let isMusicEnabled = true;
+let areSoundsEnabled = true;
+
 function startBackgroundMusic() {
     try {
         console.log("startBackgroundMusic called");
@@ -802,13 +808,14 @@ function startBackgroundMusic() {
         isPlaying = true;
 
         oscillators = [];
+        harmonicOscillators = [];
+        lfoOscillators = [];
+        lfoHarmonicOscillators = [];
         gainNodes = [];
-        const numOscillators = 3;
-        const baseFrequencies = [110, 220, 330];
 
-        for (let i = 0; i < numOscillators; i++) {
+        for (let i = 0; i < baseFrequencies.length; i++) {
             const osc = audioContext.createOscillator();
-            osc.type = 'sine';
+            osc.type = 'square';
             osc.frequency.setValueAtTime(baseFrequencies[i], audioContext.currentTime);
 
             const frequencyMod = audioContext.createGain();
@@ -816,29 +823,47 @@ function startBackgroundMusic() {
             osc.connect(frequencyMod);
 
             const gainNode = audioContext.createGain();
-            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
             frequencyMod.connect(gainNode);
 
-            console.log(`Oscillator ${i} started with frequency ${baseFrequencies[i]}`);
-            osc.start();
+            const harmonicOsc = audioContext.createOscillator();
+            harmonicOsc.type = 'sawtooth';
+            harmonicOsc.frequency.setValueAtTime(baseFrequencies[i] * 2, audioContext.currentTime);
+            const harmonicGain = audioContext.createGain();
+            harmonicGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+            harmonicOsc.connect(harmonicGain);
+            harmonicGain.connect(gainNode);
 
-            // Ajouter une variation sinusoïdale lente de la fréquence (LFO)
             const lfo = audioContext.createOscillator();
             lfo.type = 'sine';
-            lfo.frequency.setValueAtTime(0.1 + i * 0.05, audioContext.currentTime); // Fréquence lente (0.1 à 0.2 Hz)
+            lfo.frequency.setValueAtTime(0.1 + i * 0.05, audioContext.currentTime);
             const lfoGain = audioContext.createGain();
-            lfoGain.gain.setValueAtTime(30, audioContext.currentTime); // Amplitude de la variation (±30 Hz)
+            lfoGain.gain.setValueAtTime(30, audioContext.currentTime);
             lfo.connect(lfoGain);
-            lfoGain.connect(osc.frequency); // Moduler la fréquence de l’oscillateur principal
-            lfo.start();
+            lfoGain.connect(osc.frequency);
+            lfo.start(audioContext.currentTime + i * 0.5);
 
-            // Variation aléatoire du volume
+            const lfoHarmonic = audioContext.createOscillator();
+            lfoHarmonic.type = 'sine';
+            lfoHarmonic.frequency.setValueAtTime(0.1 + i * 0.05, audioContext.currentTime);
+            const lfoHarmonicGain = audioContext.createGain();
+            lfoHarmonicGain.gain.setValueAtTime(60, audioContext.currentTime);
+            lfoHarmonic.connect(lfoHarmonicGain);
+            lfoHarmonicGain.connect(harmonicOsc.frequency);
+            lfoHarmonic.start(audioContext.currentTime + i * 0.5);
+
+            osc.start();
+            harmonicOsc.start();
+
             setInterval(() => {
                 const newGain = 0.4 + Math.random() * 0.2;
                 gainNode.gain.linearRampToValueAtTime(newGain, audioContext.currentTime + 5);
             }, 7000);
 
             oscillators.push(osc);
+            harmonicOscillators.push(harmonicOsc);
+            lfoOscillators.push(lfo);
+            lfoHarmonicOscillators.push(lfoHarmonic);
             gainNodes.push(gainNode);
         }
 
@@ -868,7 +893,6 @@ function startBackgroundMusic() {
         console.error("Error in startBackgroundMusic:", error);
     }
 }
-
 // Lancer la musique au démarrage NON 
 // startBackgroundMusic();
          
@@ -877,11 +901,11 @@ function startBackgroundMusic() {
     if (!isPlaying) return;
 
     oscillators.forEach((osc, i) => {
-        const baseFreq = osc.frequency.value;
+        const baseFreq = baseFrequencies[i]; // Utilise la fréquence de base fixe
         const gainNode = gainNodes[i];
         const baseGain = gainNode.gain.value;
 
-        const peakFreq = baseFreq + 80; // Augmente à +80 Hz pour être plus marqué
+        const peakFreq = baseFreq + 80;
         const peakGain = baseGain + 0.4;
 
         osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
@@ -892,15 +916,15 @@ function startBackgroundMusic() {
     });
 }
         // Fonction perturbation Pattern
-        function createPatternPerturbation() {
+      function createPatternPerturbation() {
     if (!isPlaying) return;
 
     oscillators.forEach((osc, i) => {
-        const baseFreq = osc.frequency.value;
+        const baseFreq = baseFrequencies[i]; // Utilise la fréquence de base fixe
         const gainNode = gainNodes[i];
         const baseGain = gainNode.gain.value;
 
-        const peakFreq = baseFreq + 120; // Augmente à +120 Hz pour une figure
+        const peakFreq = baseFreq + 120;
         const peakGain = baseGain + 0.5;
 
         osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
@@ -935,7 +959,7 @@ function startBackgroundMusic() {
     }, 3000);
 }
 
-      function toggleMusic() {
+ function toggleMusic() {
     console.log("toggleMusic called, isMusicEnabled:", isMusicEnabled);
     isMusicEnabled = !isMusicEnabled;
     const musicButton = document.getElementById('music-toggle');
@@ -946,7 +970,13 @@ function startBackgroundMusic() {
         }
     } else {
         oscillators.forEach(osc => osc.stop());
+        harmonicOscillators.forEach(osc => osc.stop());
+        lfoOscillators.forEach(lfo => lfo.stop());
+        lfoHarmonicOscillators.forEach(lfo => lfo.stop());
         oscillators = [];
+        harmonicOscillators = [];
+        lfoOscillators = [];
+        lfoHarmonicOscillators = [];
         gainNodes = [];
         isPlaying = false;
     }
