@@ -229,7 +229,6 @@
 <div id="game-container" style="display: none;">
    <div id="controls">
     <div id="toggle-buttons">
-        <button id="music-toggle" onclick="toggleMusic()">Nappe ON</button>
         <button id="sounds-toggle" onclick="toggleSounds()">Sons ON</button>
     </div>
     <div id="score">Score: 0</div>
@@ -262,7 +261,6 @@
         let totalPiecesPlayed = 0; // N: nombre de pièces jouées
         let maxFigureSize = 0; // Max: taille de la plus grande figure
         let flushCount = 1; // Compteur de flushes, initialisé à 1 au départ
-        let baseFrequencies = [110, 220, 330]; // Déplace ici comme variable globale
 
         // Possible edge points with labels
         const edgePoints = [
@@ -366,10 +364,6 @@
     updateScoreDisplay();
     console.log("Game reinitialized");
 
-    startBackgroundMusic();
-    console.log("startBackgroundMusic called");
-    const musicButton = document.getElementById('music-toggle');
-    musicButton.textContent = isMusicEnabled ? 'Nappe ON' : 'Nappe OFF';
     const soundsButton = document.getElementById('sounds-toggle');
     soundsButton.textContent = areSoundsEnabled ? 'Sons ON' : 'Sons OFF';
 }
@@ -623,7 +617,7 @@ if (!hasClosedShape) {
     patternSound.volume = 0.7;
     patternSound.play();
 }
-createPatternPerturbation();
+
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / traceDuration, 1);
@@ -805,195 +799,12 @@ for (let i = 0; i < GRID_SIZE; i++) {
     // ajout de la fonction son 
         
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let isPlaying = false;
-let oscillators = [];
-let harmonicOscillators = []; // Pour les oscillateurs harmoniques
-let lfoOscillators = []; // Pour les LFO principaux
-let lfoHarmonicOscillators = []; // Pour les LFO des harmoniques
-let gainNodes = [];
-let isMusicEnabled = true;
+
 let areSoundsEnabled = true;
 
-function startBackgroundMusic() {
-    try {
-        console.log("startBackgroundMusic called");
-        if (isPlaying) return;
-        isPlaying = true;
 
-        oscillators = [];
-        harmonicOscillators = [];
-        lfoOscillators = [];
-        lfoHarmonicOscillators = [];
-        gainNodes = [];
+      
 
-        for (let i = 0; i < baseFrequencies.length; i++) {
-            const osc = audioContext.createOscillator();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(baseFrequencies[i], audioContext.currentTime);
-
-            const frequencyMod = audioContext.createGain();
-            frequencyMod.gain.setValueAtTime(0.5, audioContext.currentTime);
-            osc.connect(frequencyMod);
-
-            const gainNode = audioContext.createGain();
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            frequencyMod.connect(gainNode);
-
-            const harmonicOsc = audioContext.createOscillator();
-            harmonicOsc.type = 'sawtooth';
-            harmonicOsc.frequency.setValueAtTime(baseFrequencies[i] * 2, audioContext.currentTime);
-            const harmonicGain = audioContext.createGain();
-            harmonicGain.gain.setValueAtTime(0.1, audioContext.currentTime);
-            harmonicOsc.connect(harmonicGain);
-            harmonicGain.connect(gainNode);
-
-            const lfo = audioContext.createOscillator();
-            lfo.type = 'sine';
-            lfo.frequency.setValueAtTime(0.1 + i * 0.05, audioContext.currentTime);
-            const lfoGain = audioContext.createGain();
-            lfoGain.gain.setValueAtTime(30, audioContext.currentTime);
-            lfo.connect(lfoGain);
-            lfoGain.connect(osc.frequency);
-            lfo.start(audioContext.currentTime + i * 0.5);
-
-            const lfoHarmonic = audioContext.createOscillator();
-            lfoHarmonic.type = 'sine';
-            lfoHarmonic.frequency.setValueAtTime(0.1 + i * 0.05, audioContext.currentTime);
-            const lfoHarmonicGain = audioContext.createGain();
-            lfoHarmonicGain.gain.setValueAtTime(60, audioContext.currentTime);
-            lfoHarmonic.connect(lfoHarmonicGain);
-            lfoHarmonicGain.connect(harmonicOsc.frequency);
-            lfoHarmonic.start(audioContext.currentTime + i * 0.5);
-
-            osc.start();
-            harmonicOsc.start();
-
-            setInterval(() => {
-                const newGain = 0.4 + Math.random() * 0.2;
-                gainNode.gain.linearRampToValueAtTime(newGain, audioContext.currentTime + 5);
-            }, 7000);
-
-            oscillators.push(osc);
-            harmonicOscillators.push(harmonicOsc);
-            lfoOscillators.push(lfo);
-            lfoHarmonicOscillators.push(lfoHarmonic);
-            gainNodes.push(gainNode);
-        }
-
-        const convolver = audioContext.createConvolver();
-        const impulseResponse = audioContext.createBuffer(2, audioContext.sampleRate * 2, audioContext.sampleRate);
-        const impulseData = impulseResponse.getChannelData(0);
-        const impulseDataR = impulseResponse.getChannelData(1);
-        for (let i = 0; i < impulseData.length; i++) {
-            impulseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseData.length, 3);
-            impulseDataR[i] = impulseData[i];
-        }
-        convolver.buffer = impulseResponse;
-
-        const reverbGain = audioContext.createGain();
-        reverbGain.gain.setValueAtTime(0.5, audioContext.currentTime);
-        convolver.connect(reverbGain);
-        reverbGain.connect(audioContext.destination);
-
-        oscillators.forEach((osc, i) => {
-            const gainNode = gainNodes[i];
-            gainNode.connect(convolver);
-            gainNode.connect(audioContext.destination);
-        });
-
-        console.log("Reverb connected");
-    } catch (error) {
-        console.error("Error in startBackgroundMusic:", error);
-    }
-}
-// Lancer la musique au démarrage NON 
-// startBackgroundMusic();
-         
-        // fonction perturbation
-       function createPlacementPerturbation() {
-    if (!isPlaying) return;
-
-    oscillators.forEach((osc, i) => {
-        const baseFreq = baseFrequencies[i]; // Utilise la fréquence de base fixe
-        const gainNode = gainNodes[i];
-        const baseGain = gainNode.gain.value;
-
-        const peakFreq = baseFreq + 80;
-        const peakGain = baseGain + 0.4;
-
-        osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(peakGain, audioContext.currentTime);
-
-        osc.frequency.linearRampToValueAtTime(baseFreq, audioContext.currentTime + 2);
-        gainNode.gain.linearRampToValueAtTime(baseGain, audioContext.currentTime + 2);
-    });
-}
-        // Fonction perturbation Pattern
-      function createPatternPerturbation() {
-    if (!isPlaying) return;
-
-    oscillators.forEach((osc, i) => {
-        const baseFreq = baseFrequencies[i]; // Utilise la fréquence de base fixe
-        const gainNode = gainNodes[i];
-        const baseGain = gainNode.gain.value;
-
-        const peakFreq = baseFreq + 120;
-        const peakGain = baseGain + 0.5;
-
-        osc.frequency.setValueAtTime(peakFreq, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(peakGain, audioContext.currentTime);
-
-        osc.frequency.linearRampToValueAtTime(baseFreq, audioContext.currentTime + 3);
-        gainNode.gain.linearRampToValueAtTime(baseGain, audioContext.currentTime + 3);
-    });
-
-    const reverbGainNode = audioContext.createGain();
-    reverbGainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
-    reverbGainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 3);
-    const convolver = audioContext.createConvolver();
-    const impulseResponse = audioContext.createBuffer(2, audioContext.sampleRate * 1, audioContext.sampleRate);
-    const impulseData = impulseResponse.getChannelData(0);
-    const impulseDataR = impulseResponse.getChannelData(1);
-    for (let i = 0; i < impulseData.length; i++) {
-        impulseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseData.length, 2);
-        impulseDataR[i] = impulseData[i];
-    }
-    convolver.buffer = impulseResponse;
-    oscillators.forEach((osc, i) => {
-        const gainNode = gainNodes[i];
-        gainNode.connect(convolver);
-    });
-    convolver.connect(reverbGainNode);
-    reverbGainNode.connect(audioContext.destination);
-
-    setTimeout(() => {
-        reverbGainNode.disconnect();
-        convolver.disconnect();
-    }, 3000);
-}
-
- function toggleMusic() {
-    console.log("toggleMusic called, isMusicEnabled:", isMusicEnabled);
-    isMusicEnabled = !isMusicEnabled;
-    const musicButton = document.getElementById('music-toggle');
-    musicButton.textContent = isMusicEnabled ? 'Nappe ON' : 'Nappe OFF';
-    if (isMusicEnabled) {
-        if (!isPlaying) {
-            startBackgroundMusic();
-        }
-    } else {
-        oscillators.forEach(osc => osc.stop());
-        harmonicOscillators.forEach(osc => osc.stop());
-        lfoOscillators.forEach(lfo => lfo.stop());
-        lfoHarmonicOscillators.forEach(lfo => lfo.stop());
-        oscillators = [];
-        harmonicOscillators = [];
-        lfoOscillators = [];
-        lfoHarmonicOscillators = [];
-        gainNodes = [];
-        isPlaying = false;
-    }
-}
 
 function toggleSounds() {
     console.log("toggleSounds called, areSoundsEnabled:", areSoundsEnabled);
