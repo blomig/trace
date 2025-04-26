@@ -711,10 +711,6 @@ if (!hasClosedShape) {
             ctx.strokeStyle = '#50c7cd';
             ctx.lineWidth = 8;
 
-            const glowIntensity = 5 + Math.sin(pieceProgress * Math.PI) * 10;
-            ctx.shadowColor = '#FFFF00';
-            ctx.shadowBlur = glowIntensity;
-
             for (let seg of segments) {
                 const dx = seg.to.x - seg.from.x;
                 const dy = seg.to.y - seg.from.y;
@@ -733,7 +729,6 @@ if (!hasClosedShape) {
                 currentLength -= segLength;
             }
 
-            ctx.shadowBlur = 0;
         });
 
         if (progress < 1) {
