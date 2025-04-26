@@ -565,7 +565,7 @@ if (!hasClosedShape) {
         }
 
         // Highlight and remove pieces in the closed path
-     function highlightAndRemovePieces(path) {
+    function highlightAndRemovePieces(path) {
     const uniquePieces = new Set();
     path.forEach(p => uniquePieces.add(`${p.row},${p.col}`));
     const cells = [];
@@ -638,87 +638,102 @@ if (!hasClosedShape) {
     }
     createPatternPerturbation();
 
+    // Pré-calculer les longueurs totales pour chaque pièce
+    const pieceData = cells.map(({ row, col, cell }) => {
+        const piece = grid[row][col];
+        if (!piece) return null;
+
+        const pathEntry = path.find(p => p.row === row && p.col === col);
+        if (!pathEntry) return null;
+
+        const pointLabels = grid[row][col].point1.label === pathEntry.point ||
+                           grid[row][col].point2.label === pathEntry.point
+                           ? [grid[row][col].point1, grid[row][col].point2]
+                           : [grid[row][col].point2, grid[row][col].point1];
+
+        const startPoint = pointLabels[0];
+        const endPoint = pointLabels[1];
+
+        const segments = [
+            { from: startPoint, to: { x: 25, y: 25 } },
+            { from: { x: 25, y: 25 }, to: endPoint }
+        ];
+
+        let totalLength = 0;
+        segments.forEach(seg => {
+            const dx = seg.to.x - seg.from.x;
+            const dy = seg.to.y - seg.from.y;
+            totalLength += Math.sqrt(dx * dx + dy * dy);
+        });
+
+        return { row, col, cell, piece, startPoint, endPoint, segments, totalLength };
+    }).filter(data => data !== null);
+
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / traceDuration, 1);
 
-        // Calculer quelle pièce est en train d’être dessinée
-        const numPieces = cells.length;
-        const timePerPiece = traceDuration / numPieces; // Temps par pièce
-        const currentPieceIndex = Math.min(Math.floor(elapsed / timePerPiece), numPieces - 1); // Index de la pièce actuelle
-        const pieceProgress = Math.min((elapsed % timePerPiece) / timePerPiece, 1); // Progrès pour la pièce actuelle
+        const numPieces = pieceData.length;
+        const timePerPiece = traceDuration / numPieces;
+        const currentPieceIndex = Math.min(Math.floor(elapsed / timePerPiece), numPieces - 1);
+        const pieceProgress = Math.min((elapsed % timePerPiece) / timePerPiece, 1);
 
-        cells.forEach(({ row, col, cell }, index) => {
-            const piece = grid[row][col];
-            if (!piece) return;
+        pieceData.forEach(({ row, col, cell, piece, startPoint, endPoint, segments, totalLength }, index) => {
             const canvas = cell.querySelector('canvas');
             const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
 
-            const img = new Image();
-            img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
-            ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+            // Effacer et redessiner uniquement si nécessaire
+            if (index > currentPieceIndex) {
+                // Pièce non encore atteinte : efface et redessine l’image de base
+                ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                const img = new Image();
+                img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+                ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+                return;
+            }
 
-            const pathEntry = path.find(p => p.row === row && p.col === col);
-            if (!pathEntry) return;
+            // Pièce atteinte ou en cours : dessine et conserve le trait
+            let currentLength;
+            if (index < currentPieceIndex) {
+                currentLength = totalLength; // Pièce terminée : dessine complètement
+            } else {
+                currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
+            }
 
-            const pointLabels = grid[row][col].point1.label === pathEntry.point ||
-                               grid[row][col].point2.label === pathEntry.point
-                               ? [grid[row][col].point1, grid[row][col].point2]
-                               : [grid[row][col].point2, grid[row][col].point1];
+            // Dessiner l’image de base uniquement si le canvas a été effacé
+            if (index === currentPieceIndex) {
+                ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                const img = new Image();
+                img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+                ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+            }
 
-            const startPoint = pointLabels[0];
-            const endPoint = pointLabels[1];
+            ctx.strokeStyle = '#50c7cd';
+            ctx.lineWidth = 8;
 
-            ctx.beginPath();
-            const segments = [
-                { from: startPoint, to: { x: 25, y: 25 } },
-                { from: { x: 25, y: 25 }, to: endPoint }
-            ];
+            const glowIntensity = 5 + Math.sin(pieceProgress * Math.PI) * 10;
+            ctx.shadowColor = '#FFFF00';
+            ctx.shadowBlur = glowIntensity;
 
-            let totalLength = 0;
-            segments.forEach(seg => {
+            for (let seg of segments) {
                 const dx = seg.to.x - seg.from.x;
                 const dy = seg.to.y - seg.from.y;
-                totalLength += Math.sqrt(dx * dx + dy * dy);
-            });
+                const segLength = Math.sqrt(dx * dx + dy * dy);
+                if (currentLength <= 0) break;
 
-            // Dessiner le trait seulement si cette pièce a été atteinte ou est en cours
-            if (index <= currentPieceIndex) {
-                let currentLength;
-                if (index < currentPieceIndex) {
-                    currentLength = totalLength; // Pièce déjà terminée : dessine complètement
-                } else {
-                    currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
-                }
+                const segProgress = Math.min(currentLength / segLength, 1);
+                const endX = seg.from.x + dx * segProgress;
+                const endY = seg.from.y + dy * segProgress;
 
-                ctx.strokeStyle = '#50c7cd';
-                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.moveTo(seg.from.x, seg.from.y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
 
-                const glowIntensity = 5 + Math.sin(pieceProgress * Math.PI) * 10;
-                ctx.shadowColor = '#FFFF00';
-                ctx.shadowBlur = glowIntensity;
-
-                for (let seg of segments) {
-                    const dx = seg.to.x - seg.from.x;
-                    const dy = seg.to.y - seg.from.y;
-                    const segLength = Math.sqrt(dx * dx + dy * dy);
-                    if (currentLength <= 0) break;
-
-                    const segProgress = Math.min(currentLength / segLength, 1);
-                    const endX = seg.from.x + dx * segProgress;
-                    const endY = seg.from.y + dy * segProgress;
-
-                    ctx.beginPath();
-                    ctx.moveTo(seg.from.x, seg.from.y);
-                    ctx.lineTo(endX, endY);
-                    ctx.stroke();
-
-                    currentLength -= segLength;
-                }
-
-                ctx.shadowBlur = 0;
+                currentLength -= segLength;
             }
+
+            ctx.shadowBlur = 0;
         });
 
         if (progress < 1) {
