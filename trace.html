@@ -565,7 +565,7 @@ if (!hasClosedShape) {
         }
 
         // Highlight and remove pieces in the closed path
-   function highlightAndRemovePieces(path) {
+  function highlightAndRemovePieces(path) {
     const uniquePieces = new Set();
     path.forEach(p => uniquePieces.add(`${p.row},${p.col}`));
     const cells = [];
@@ -641,17 +641,16 @@ if (!hasClosedShape) {
     // Construire pieceData en suivant l’ordre de path, sans doublons
     const pieceData = [];
     const seenPieces = new Set();
-    for (let i = 0; i < path.length - 1; i++) { // -1 pour ignorer le dernier point (boucle)
+    for (let i = 0; i < path.length - 1; i++) {
         const { row, col, point } = path[i];
         const pieceKey = `${row},${col}`;
-        if (seenPieces.has(pieceKey)) continue; // Ignore les doublons
+        if (seenPieces.has(pieceKey)) continue;
 
         seenPieces.add(pieceKey);
         const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
         const piece = grid[row][col];
         if (!piece || !cell) continue;
 
-        // Déterminer le point de départ et d’arrivée en suivant l’ordre du chemin
         const nextIndex = (i + 1) % path.length;
         const currentPoint = point;
         const nextPoint = path[nextIndex].point;
@@ -667,7 +666,7 @@ if (!hasClosedShape) {
             endPoint = points[0];
         }
 
-        if (endPoint.label !== nextPoint) {
+        if (endPoint.label === nextPoint) { // Inverse le sens de dessin
             const temp = startPoint;
             startPoint = endPoint;
             endPoint = temp;
@@ -702,7 +701,14 @@ if (!hasClosedShape) {
             const canvas = cell.querySelector('canvas');
             const ctx = canvas.getContext('2d');
 
-            // Effacer et redessiner uniquement si la pièce est en cours et n’a pas été terminée
+            if (index > currentPieceIndex && !allPiecesDrawn) {
+                ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+                const img = new Image();
+                img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+                ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+                return;
+            }
+
             if (index === currentPieceIndex && pieceProgress < 1 && !allPiecesDrawn) {
                 ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
                 const img = new Image();
@@ -710,14 +716,11 @@ if (!hasClosedShape) {
                 ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
             }
 
-            // Dessiner uniquement si la pièce n’a pas encore été complètement dessinée
-            if (index > currentPieceIndex && !allPiecesDrawn) return;
-
             let currentLength;
             if (index < currentPieceIndex || allPiecesDrawn) {
-                currentLength = totalLength; // Pièce terminée ou toutes les pièces dessinées : dessine complètement
+                currentLength = totalLength;
             } else {
-                currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
+                currentLength = pieceProgress * totalLength;
             }
 
             ctx.strokeStyle = '#FFFF00';
