@@ -638,21 +638,36 @@ if (!hasClosedShape) {
     }
     createPatternPerturbation();
 
-    // Pré-calculer les longueurs totales pour chaque pièce
-    const pieceData = cells.map(({ row, col, cell }) => {
+    // Pré-calculer les longueurs totales pour chaque pièce et déterminer le sens
+    const pieceData = [];
+    for (let i = 0; i < path.length; i++) {
+        const { row, col, point } = path[i];
+        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
         const piece = grid[row][col];
-        if (!piece) return null;
+        if (!piece || !cell) continue;
 
-        const pathEntry = path.find(p => p.row === row && p.col === col);
-        if (!pathEntry) return null;
+        // Déterminer le point de départ et d’arrivée en suivant l’ordre du chemin
+        const nextIndex = (i + 1) % path.length;
+        const prevIndex = (i - 1 + path.length) % path.length;
+        const currentPoint = point;
+        const nextPoint = path[nextIndex].point;
 
-        const pointLabels = grid[row][col].point1.label === pathEntry.point ||
-                           grid[row][col].point2.label === pathEntry.point
-                           ? [grid[row][col].point1, grid[row][col].point2]
-                           : [grid[row][col].point2, grid[row][col].point1];
+        const points = [piece.point1, piece.point2];
+        let startPoint, endPoint;
 
-        const startPoint = pointLabels[0];
-        const endPoint = pointLabels[1];
+        if (points[0].label === currentPoint) {
+            startPoint = points[0];
+            endPoint = points[1];
+        } else {
+            startPoint = points[1];
+            endPoint = points[0];
+        }
+
+        if (endPoint.label !== nextPoint) {
+            const temp = startPoint;
+            startPoint = endPoint;
+            endPoint = temp;
+        }
 
         const segments = [
             { from: startPoint, to: { x: 25, y: 25 } },
@@ -666,8 +681,8 @@ if (!hasClosedShape) {
             totalLength += Math.sqrt(dx * dx + dy * dy);
         });
 
-        return { row, col, cell, piece, startPoint, endPoint, segments, totalLength };
-    }).filter(data => data !== null);
+        pieceData.push({ row, col, cell, piece, startPoint, endPoint, segments, totalLength });
+    }
 
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
@@ -682,9 +697,7 @@ if (!hasClosedShape) {
             const canvas = cell.querySelector('canvas');
             const ctx = canvas.getContext('2d');
 
-            // Effacer et redessiner uniquement si nécessaire
             if (index > currentPieceIndex) {
-                // Pièce non encore atteinte : efface et redessine l’image de base
                 ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
                 const img = new Image();
                 img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
@@ -692,20 +705,18 @@ if (!hasClosedShape) {
                 return;
             }
 
-            // Pièce atteinte ou en cours : dessine et conserve le trait
-            let currentLength;
-            if (index < currentPieceIndex) {
-                currentLength = totalLength; // Pièce terminée : dessine complètement
-            } else {
-                currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
-            }
-
-            // Dessiner l’image de base uniquement si le canvas a été effacé
-            if (index === currentPieceIndex) {
+            if (index === currentPieceIndex && pieceProgress < 1) {
                 ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
                 const img = new Image();
                 img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
                 ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+            }
+
+            let currentLength;
+            if (index < currentPieceIndex) {
+                currentLength = totalLength;
+            } else {
+                currentLength = pieceProgress * totalLength;
             }
 
             ctx.strokeStyle = '#50c7cd';
@@ -728,7 +739,6 @@ if (!hasClosedShape) {
 
                 currentLength -= segLength;
             }
-
         });
 
         if (progress < 1) {
