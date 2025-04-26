@@ -565,7 +565,7 @@ if (!hasClosedShape) {
         }
 
         // Highlight and remove pieces in the closed path
-        function highlightAndRemovePieces(path) {
+     function highlightAndRemovePieces(path) {
     const uniquePieces = new Set();
     path.forEach(p => uniquePieces.add(`${p.row},${p.col}`));
     const cells = [];
@@ -595,10 +595,8 @@ if (!hasClosedShape) {
     const sparkleDuration = 600;
     const startTime = performance.now();
 
-    // Calculer les points gagnés pour cette figure
     const pointsGained = calculateScore(uniquePieces.size);
 
-    // Calculer le centre de la figure
     let avgRow = 0, avgCol = 0;
     cells.forEach(({ row, col }) => {
         avgRow += parseInt(row);
@@ -607,28 +605,50 @@ if (!hasClosedShape) {
     avgRow /= cells.length;
     avgCol /= cells.length;
 
-    // Positionner le texte au centre de la figure
     const gridDiv = document.getElementById('grid');
     const pointsDiv = document.createElement('div');
     pointsDiv.className = 'points-display';
     pointsDiv.textContent = `+${pointsGained}`;
-    const left = (avgCol * (CELL_SIZE + 2)) + (CELL_SIZE / 2) - 10; // Ajuste selon la taille du texte
+    const left = (avgCol * (CELL_SIZE + 2)) + (CELL_SIZE / 2) - 10;
     const top = (avgRow * (CELL_SIZE + 2)) + (CELL_SIZE / 2) - 10;
     pointsDiv.style.left = `${left}px`;
     pointsDiv.style.top = `${top}px`;
     gridDiv.appendChild(pointsDiv);
 
+    const numParticles = 8;
+    for (let i = 0; i < numParticles; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'points-particle';
+        const angle = (i / numParticles) * 2 * Math.PI;
+        const distance = 20 + Math.random() * 20;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance;
+        particle.style.setProperty('--dx', `${dx}px`);
+        particle.style.setProperty('--dy', `${dy}px`);
+        particle.style.left = `${left + 10}px`;
+        particle.style.top = `${top + 10}px`;
+        gridDiv.appendChild(particle);
+        setTimeout(() => particle.remove(), 1500);
+    }
+
     if (areSoundsEnabled) {
-    const patternSound = new Audio('pattern.wav');
-    patternSound.volume = 0.7;
-    patternSound.play();
-}
-createPatternPerturbation();
+        const patternSound = new Audio('pattern.wav');
+        patternSound.volume = 0.7;
+        patternSound.play();
+    }
+    createPatternPerturbation();
+
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / traceDuration, 1);
 
-        cells.forEach(({ row, col, cell }) => {
+        // Calculer quelle pièce est en train d’être dessinée
+        const numPieces = cells.length;
+        const timePerPiece = traceDuration / numPieces; // Temps par pièce
+        const currentPieceIndex = Math.min(Math.floor(elapsed / timePerPiece), numPieces - 1); // Index de la pièce actuelle
+        const pieceProgress = Math.min((elapsed % timePerPiece) / timePerPiece, 1); // Progrès pour la pièce actuelle
+
+        cells.forEach(({ row, col, cell }, index) => {
             const piece = grid[row][col];
             if (!piece) return;
             const canvas = cell.querySelector('canvas');
@@ -663,26 +683,41 @@ createPatternPerturbation();
                 totalLength += Math.sqrt(dx * dx + dy * dy);
             });
 
-            let currentLength = progress * totalLength;
-            ctx.strokeStyle = '#50c7cd';
-            ctx.lineWidth = 8;
+            // Dessiner le trait seulement si cette pièce a été atteinte ou est en cours
+            if (index <= currentPieceIndex) {
+                let currentLength;
+                if (index < currentPieceIndex) {
+                    currentLength = totalLength; // Pièce déjà terminée : dessine complètement
+                } else {
+                    currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
+                }
 
-            for (let seg of segments) {
-                const dx = seg.to.x - seg.from.x;
-                const dy = seg.to.y - seg.from.y;
-                const segLength = Math.sqrt(dx * dx + dy * dy);
-                if (currentLength <= 0) break;
+                ctx.strokeStyle = '#50c7cd';
+                ctx.lineWidth = 8;
 
-                const segProgress = Math.min(currentLength / segLength, 1);
-                const endX = seg.from.x + dx * segProgress;
-                const endY = seg.from.y + dy * segProgress;
+                const glowIntensity = 5 + Math.sin(pieceProgress * Math.PI) * 10;
+                ctx.shadowColor = '#FFFF00';
+                ctx.shadowBlur = glowIntensity;
 
-                ctx.beginPath();
-                ctx.moveTo(seg.from.x, seg.from.y);
-                ctx.lineTo(endX, endY);
-                ctx.stroke();
+                for (let seg of segments) {
+                    const dx = seg.to.x - seg.from.x;
+                    const dy = seg.to.y - seg.from.y;
+                    const segLength = Math.sqrt(dx * dx + dy * dy);
+                    if (currentLength <= 0) break;
 
-                currentLength -= segLength;
+                    const segProgress = Math.min(currentLength / segLength, 1);
+                    const endX = seg.from.x + dx * segProgress;
+                    const endY = seg.from.y + dy * segProgress;
+
+                    ctx.beginPath();
+                    ctx.moveTo(seg.from.x, seg.from.y);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    currentLength -= segLength;
+                }
+
+                ctx.shadowBlur = 0;
             }
         });
 
@@ -711,7 +746,7 @@ createPatternPerturbation();
                         cell.classList.remove('occupied');
                     }
                 });
-                pointsDiv.remove(); // Supprime le texte après l’animation
+                pointsDiv.remove();
                 maxFigureSize = Math.max(maxFigureSize, uniquePieces.size);
                 updateScore(uniquePieces.size);
                 checkGameOver();
@@ -721,6 +756,7 @@ createPatternPerturbation();
 
     requestAnimationFrame(animate);
 }
+        
         // Update score
         function updateScore(piecesRemoved) {
     const oldScore = score; // Score avant ajout
