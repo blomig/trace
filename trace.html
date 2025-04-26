@@ -638,10 +638,15 @@ if (!hasClosedShape) {
     }
     createPatternPerturbation();
 
-    // Pré-calculer les données pour chaque pièce dans l’ordre de path
+    // Construire pieceData en suivant l’ordre de path, sans doublons
     const pieceData = [];
+    const seenPieces = new Set();
     for (let i = 0; i < path.length; i++) {
         const { row, col, point } = path[i];
+        const pieceKey = `${row},${col}`;
+        if (seenPieces.has(pieceKey)) continue; // Ignore les doublons
+
+        seenPieces.add(pieceKey);
         const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
         const piece = grid[row][col];
         if (!piece || !cell) continue;
@@ -708,14 +713,14 @@ if (!hasClosedShape) {
             if (index > currentPieceIndex) return;
 
             let currentLength;
-            if (index < currentPieceIndex) {
-                currentLength = totalLength; // Pièce terminée : dessine complètement
+            if (index < currentPieceIndex || pieceProgress === 1) {
+                currentLength = totalLength; // Pièce terminée ou en fin d’animation : dessine complètement
             } else {
                 currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
             }
 
-            ctx.strokeStyle = '#50c7cd';
-            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#FFFF00';
+            ctx.lineWidth = 3;
 
             for (let seg of segments) {
                 const dx = seg.to.x - seg.from.x;
