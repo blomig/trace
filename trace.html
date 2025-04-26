@@ -638,22 +638,28 @@ if (!hasClosedShape) {
     }
     createPatternPerturbation();
 
-    // Construire les segments à dessiner en suivant l’ordre de path
-    const segmentsToDraw = [];
+    // Construire pieceData en suivant l’ordre de path, sans doublons
+    const pieceData = [];
+    const seenPieces = new Set();
     for (let i = 0; i < path.length - 1; i++) { // -1 pour ignorer le dernier point (boucle)
-        const current = path[i];
-        const next = path[i + 1];
-        const row = current.row;
-        const col = current.col;
+        const { row, col, point } = path[i];
+        const pieceKey = `${row},${col}`;
+        if (seenPieces.has(pieceKey)) continue; // Ignore les doublons
+
+        seenPieces.add(pieceKey);
         const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
         const piece = grid[row][col];
         if (!piece || !cell) continue;
 
-        // Déterminer startPoint et endPoint pour ce segment
+        // Déterminer le point de départ et d’arrivée en suivant l’ordre du chemin
+        const nextIndex = (i + 1) % path.length;
+        const currentPoint = point;
+        const nextPoint = path[nextIndex].point;
+
         const points = [piece.point1, piece.point2];
         let startPoint, endPoint;
 
-        if (points[0].label === current.point) {
+        if (points[0].label === currentPoint) {
             startPoint = points[0];
             endPoint = points[1];
         } else {
@@ -661,74 +667,79 @@ if (!hasClosedShape) {
             endPoint = points[0];
         }
 
-        if (endPoint.label !== next.point) {
+        if (endPoint.label !== nextPoint) {
             const temp = startPoint;
             startPoint = endPoint;
             endPoint = temp;
         }
 
-        const segment = {
-            from: startPoint,
-            to: endPoint,
-            length: Math.sqrt(
-                (endPoint.x - startPoint.x) * (endPoint.x - startPoint.x) +
-                (endPoint.y - startPoint.y) * (endPoint.y - startPoint.y)
-            )
-        };
+        const segments = [
+            { from: startPoint, to: { x: 25, y: 25 } },
+            { from: { x: 25, y: 25 }, to: endPoint }
+        ];
 
-        segmentsToDraw.push({ row, col, cell, piece, segment, isDrawn: false });
+        let totalLength = 0;
+        segments.forEach(seg => {
+            const dx = seg.to.x - seg.from.x;
+            const dy = seg.to.y - seg.from.y;
+            totalLength += Math.sqrt(dx * dx + dy * dy);
+        });
+
+        pieceData.push({ row, col, cell, piece, startPoint, endPoint, segments, totalLength, isDrawn: false });
     }
-
-    // Calculer la longueur totale du chemin pour normaliser le progrès
-    let totalPathLength = 0;
-    segmentsToDraw.forEach(({ segment }) => {
-        totalPathLength += segment.length;
-    });
 
     function animate(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / traceDuration, 1);
 
-        // Calculer le progrès global en termes de longueur
-        let currentPathLength = progress * totalPathLength;
-        let allSegmentsDrawn = true;
+        const numPieces = pieceData.length;
+        const timePerPiece = traceDuration / numPieces;
+        const currentPieceIndex = Math.min(Math.floor(elapsed / timePerPiece), numPieces - 1);
+        const pieceProgress = Math.min((elapsed % timePerPiece) / timePerPiece, 1);
+        let allPiecesDrawn = currentPieceIndex === numPieces - 1 && pieceProgress === 1;
 
-        segmentsToDraw.forEach(({ row, col, cell, piece, segment }, index) => {
+        pieceData.forEach(({ row, col, cell, piece, startPoint, endPoint, segments, totalLength }, index) => {
             const canvas = cell.querySelector('canvas');
             const ctx = canvas.getContext('2d');
 
-            // Si ce segment a déjà été complètement dessiné, ne rien faire
-            if (currentPathLength <= 0) return;
-
-            const segLength = segment.length;
-            const segProgress = Math.min(currentPathLength / segLength, 1);
-
-            if (segProgress < 1) {
-                allSegmentsDrawn = false;
-            }
-
-            // Effacer et redessiner uniquement si le segment est en cours
-            if (segProgress < 1) {
+            // Effacer et redessiner uniquement si la pièce est en cours et n’a pas été terminée
+            if (index === currentPieceIndex && pieceProgress < 1 && !allPiecesDrawn) {
                 ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
                 const img = new Image();
                 img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
                 ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
             }
 
-            const dx = segment.to.x - segment.from.x;
-            const dy = segment.to.y - segment.from.y;
-            const endX = segment.from.x + dx * segProgress;
-            const endY = segment.from.y + dy * segProgress;
+            // Dessiner uniquement si la pièce n’a pas encore été complètement dessinée
+            if (index > currentPieceIndex && !allPiecesDrawn) return;
+
+            let currentLength;
+            if (index < currentPieceIndex || allPiecesDrawn) {
+                currentLength = totalLength; // Pièce terminée ou toutes les pièces dessinées : dessine complètement
+            } else {
+                currentLength = pieceProgress * totalLength; // Pièce en cours : dessine partiellement
+            }
 
             ctx.strokeStyle = '#FFFF00';
             ctx.lineWidth = 3;
 
-            ctx.beginPath();
-            ctx.moveTo(segment.from.x, segment.from.y);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
+            for (let seg of segments) {
+                const dx = seg.to.x - seg.from.x;
+                const dy = seg.to.y - seg.from.y;
+                const segLength = Math.sqrt(dx * dx + dy * dy);
+                if (currentLength <= 0) break;
 
-            currentPathLength -= segLength;
+                const segProgress = Math.min(currentLength / segLength, 1);
+                const endX = seg.from.x + dx * segProgress;
+                const endY = seg.from.y + dy * segProgress;
+
+                ctx.beginPath();
+                ctx.moveTo(seg.from.x, seg.from.y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+
+                currentLength -= segLength;
+            }
         });
 
         if (progress < 1) {
