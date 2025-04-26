@@ -701,30 +701,34 @@ if (!hasClosedShape) {
             const canvas = cell.querySelector('canvas');
             const ctx = canvas.getContext('2d');
 
-            if (index > currentPieceIndex && !allPiecesDrawn) {
-                ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
-                const img = new Image();
-                img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
-                ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
-                return;
-            }
+            // Effacer et redessiner uniquement si la pièce est en cours et n’a pas été terminée
+if (index === currentPieceIndex && pieceProgress < 1 && !allPiecesDrawn) {
+    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+    const img = new Image();
+    img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+    ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+}
 
-            if (index === currentPieceIndex && pieceProgress < 1 && !allPiecesDrawn) {
-                ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
-                const img = new Image();
-                img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
-                ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
-            }
+// Arrêter toute modification une fois que toutes les pièces sont dessinées
+if (allPiecesDrawn) return;
 
-            let currentLength;
-            if (index < currentPieceIndex || allPiecesDrawn) {
-                currentLength = totalLength;
-            } else {
-                currentLength = pieceProgress * totalLength;
-            }
+// Ne dessiner que les pièces non encore atteintes ou en cours
+if (index > currentPieceIndex) {
+    ctx.clearRect(0, 0, CELL_SIZE, CELL_SIZE);
+    const img = new Image();
+    img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
+    ctx.drawImage(img, 0, 0, CELL_SIZE, CELL_SIZE);
+    return;
+}
 
-            ctx.strokeStyle = '#FFFF00';
-            ctx.lineWidth = 3;
+let currentLength;
+if (index < currentPieceIndex) {
+    currentLength = totalLength;
+} else {
+    currentLength = pieceProgress * totalLength;
+}
+            ctx.strokeStyle = '#50c7cd';
+            ctx.lineWidth = 8;
 
             for (let seg of segments) {
                 const dx = seg.to.x - seg.from.x;
