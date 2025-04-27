@@ -193,21 +193,22 @@
 }
 
 #flush-button {
-    font-size: 10px;
-    padding: 4px 8px;
-    background-color: #ccc;
-    border: none;
-    border-radius: 3px;
+    width: 50px; /* Remplace par CELL_SIZE */
+    height: 50px; /* Remplace par CELL_SIZE */
     cursor: pointer;
 }
 
-#flush-button:disabled {
-    background-color: #eee;
-    cursor: not-allowed;
+#flush-button:hover {
+    content: url('images/flush_button_hover.png');
 }
 
-#flush-button:hover:not(:disabled) {
-    background-color: #bbb;
+#flush-button:active {
+    content: url('images/flush_button_click.png');
+}
+
+#flush-button:disabled {
+    content: url('images/flush_button_disabled.png');
+    cursor: not-allowed;
 }
 
 #flush-count {
@@ -246,9 +247,9 @@
     <div id="grid"></div>
     <div id="pieces"></div>
     <div id="flush-controls">
-        <button id="flush-button" onclick="flushPieces()">Flush</button>
-        <span id="flush-count">1</span>
-    </div>
+    <img id="flush-button" src="images/flush_button_rest.png" alt="Flush Button">
+    <span id="flush-count">1</span>
+</div>
     <div id="game-over">
         Fin de partie !<br>
         Score final : <span id="final-score"></span>
@@ -919,6 +920,7 @@ function toggleSounds() {
 
         // Attacher l’événement onclick dynamiquement
 document.getElementById('start-button').addEventListener('click', startGame);
+        document.getElementById('flush-button').addEventListener('click', flushPieces);
     </script>
 </body>
 </html>
