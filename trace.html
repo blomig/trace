@@ -193,8 +193,8 @@
 }
 
 #flush-button {
-    width: 50px; /* Remplace par CELL_SIZE */
-    height: 50px; /* Remplace par CELL_SIZE */
+    width: 50px; /* CELL_SIZE */
+    height: 50px; /* CELL_SIZE */
     cursor: pointer;
 }
 
@@ -206,9 +206,17 @@
     content: url('images/flush_button_click.png');
 }
 
-#flush-button:disabled {
+#flush-button.disabled {
     content: url('images/flush_button_disabled.png');
     cursor: not-allowed;
+}
+
+#flush-button.disabled:hover {
+    content: url('images/flush_button_disabled.png'); /* Pas de survol lorsqu'il est désactivé */
+}
+
+#flush-button.disabled:active {
+    content: url('images/flush_button_disabled.png'); /* Pas de clic lorsqu'il est désactivé */
 }
 
 #flush-count {
@@ -376,7 +384,11 @@
         console.error("Flush count or button not found");
     } else {
         flushCountDiv.textContent = flushCount;
-        flushButton.disabled = flushCount === 0;
+        if (flushCount === 0) {
+            flushButton.classList.add('disabled');
+        } else {
+            flushButton.classList.remove('disabled');
+        }
     }
     console.log("Flush count initialized");
 
@@ -806,23 +818,26 @@ function highlightAndRemovePieces(path) {
 }
         
         // Update score
-        function updateScore(piecesRemoved) {
-    const oldScore = score; // Score avant ajout
+     function updateScore(piecesRemoved) {
+    const oldScore = score;
     score += calculateScore(piecesRemoved);
-    const newScore = score; // Score après ajout
-
-    // Ajouter un flush tous les 50 points
+    const newScore = score;
     const oldFlushThreshold = Math.floor(oldScore / 50);
     const newFlushThreshold = Math.floor(newScore / 50);
     if (newFlushThreshold > oldFlushThreshold) {
-        flushCount += newFlushThreshold - oldFlushThreshold; // Ajoute un flush par tranche de 50 points
+        flushCount += newFlushThreshold - oldFlushThreshold;
         document.getElementById('flush-count').textContent = flushCount;
-        document.getElementById('flush-button').disabled = flushCount === 0;
+        const flushButton = document.getElementById('flush-button');
+        if (flushCount === 0) {
+            flushButton.classList.add('disabled');
+        } else {
+            flushButton.classList.remove('disabled');
+        }
     }
-
     updateScoreDisplay();
     checkGameOver();
 }
+        
     // Update score display
    function updateScoreDisplay() {
     const scoreDiv = document.getElementById('score');
@@ -903,18 +918,21 @@ function toggleSounds() {
     soundsButton.textContent = areSoundsEnabled ? 'Sons ON' : 'Sons OFF';
 }
 
-        function flushPieces() {
-    if (flushCount <= 0 || gameOver) return; // Ne fait rien si pas de flush disponible ou partie terminée
+       function flushPieces() {
+    if (flushCount <= 0 || gameOver) return;
 
-    flushCount--; // Décrémente le compteur
+    flushCount--;
     document.getElementById('flush-count').textContent = flushCount;
-    document.getElementById('flush-button').disabled = flushCount === 0;
+    const flushButton = document.getElementById('flush-button');
+    if (flushCount === 0) {
+        flushButton.classList.add('disabled');
+    } else {
+        flushButton.classList.remove('disabled');
+    }
 
-    // Vider les pièces disponibles
     pieces = [];
     document.getElementById('pieces').innerHTML = '';
 
-    // Générer de nouvelles pièces
     generatePieces();
 }
 
