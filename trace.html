@@ -220,6 +220,15 @@
     align-items: flex-start; /* Alignement à gauche */
     gap: 5px; /* Espace entre les boutons */
 }
+    @font-face {
+    font-family: 'ScoreFont';
+    src: url('score_font.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+        .score-value {
+    font-family: 'ScoreFont', sans-serif;
+}
     </style>
 </head>
 <body>
@@ -813,9 +822,9 @@ function highlightAndRemovePieces(path) {
     checkGameOver();
 }
     // Update score display
-    function updateScoreDisplay() {
+   function updateScoreDisplay() {
     const scoreDiv = document.getElementById('score');
-    scoreDiv.innerHTML = `Score: ${score} <span class="stats"><span class="stat-item">N=${totalPiecesPlayed}</span><span class="stat-item">Max=${maxFigureSize}</span></span>`;
+    scoreDiv.innerHTML = `Score: <span class="score-value">${score}</span> <span class="stats"><span class="stat-item">N=${totalPiecesPlayed}</span><span class="stat-item">Max=${maxFigureSize}</span></span>`;
 }
         // Check game over
         function checkGameOver() {
