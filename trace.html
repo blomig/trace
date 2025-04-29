@@ -873,13 +873,20 @@ function highlightAndRemovePieces(path) {
         // Restart the game
         function restartGame() {
             gameOver = false;
-            score = 0;
-            flushCount = 1; // Ajoute ici
-    document.getElementById('flush-count').textContent = flushCount; // Ajoute ici
-    document.getElementById('flush-button').disabled = flushCount === 0; // Ajoute ici
-            totalPiecesPlayed = 0; // Réinitialise N
-            maxFigureSize = 0; // Réinitialise Max
-            updateScoreDisplay();
+    selectedPiece = null;
+    selectedPieceIndex = null;
+    score = 0;
+    flushCount = 1;
+    document.getElementById('flush-count').textContent = flushCount;
+    const flushButton = document.getElementById('flush-button');
+    if (flushCount === 0) {
+        flushButton.classList.add('disabled');
+    } else {
+        flushButton.classList.remove('disabled');
+    }
+    totalPiecesPlayed = 0;
+    maxFigureSize = 0;
+    updateScoreDisplay();
             document.getElementById('game-over').style.display = 'none';
             // Reset grid
 for (let i = 0; i < GRID_SIZE; i++) {
