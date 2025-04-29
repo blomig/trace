@@ -643,13 +643,16 @@
     selectedPiece = null;
     selectedPieceIndex = null;
 
-    // Update data-index for remaining pieces
+    // Update data-index for remaining pieces and reattach all event handlers
     const remainingPieceDivs = document.querySelectorAll('.piece');
     remainingPieceDivs.forEach((div, i) => {
         div.dataset.index = i;
+        // Supprimer tous les gestionnaires existants
         div.removeEventListener('click', div.clickHandler);
         div.removeEventListener('dragstart', div.dragStartHandler);
         div.removeEventListener('touchstart', div.touchStartHandler);
+        div.removeEventListener('touchmove', div.touchMoveHandler);
+        div.removeEventListener('touchend', div.touchEndHandler);
 
         // Mode clic
         div.clickHandler = (event) => {
@@ -667,14 +670,30 @@
         div.addEventListener('dragstart', div.dragStartHandler);
 
         // Mode glisser-déposer (iPhone)
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
+        const TAP_THRESHOLD = 5;
+        const TAP_DURATION = 300;
+
         div.touchStartHandler = (event) => {
-            event.preventDefault();
             const touch = event.touches[0];
+            touchStartTime = Date.now();
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isDragging = false;
             div.dataset.startX = touch.clientX;
             div.dataset.startY = touch.clientY;
             div.dataset.pieceIndex = i;
             selectedPiece = pieces[i];
             selectedPieceIndex = i;
+
+            // Supprimer toute image fantôme existante
+            const existingGhost = document.getElementById('ghost-piece');
+            if (existingGhost) {
+                existingGhost.remove();
+            }
 
             const ghost = div.querySelector('img').cloneNode(true);
             ghost.id = 'ghost-piece';
@@ -685,7 +704,59 @@
             ghost.style.top = `${touch.clientY - CELL_SIZE / 2}px`;
             document.body.appendChild(ghost);
         };
+        div.touchMoveHandler = (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > TAP_THRESHOLD || dy > TAP_THRESHOLD) {
+                isDragging = true;
+            }
+
+            const ghost = document.getElementById('ghost-piece');
+            if (ghost) {
+                ghost.style.left = `${touch.clientX - CELL_SIZE / 2}px`;
+                ghost.style.top = `${touch.clientY - CELL_SIZE / 2}px`;
+            }
+        };
+        div.touchEndHandler = (event) => {
+            const touchDuration = Date.now() - touchStartTime;
+            const touch = event.changedTouches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+
+            // Supprimer l’image fantôme
+            const ghost = document.getElementById('ghost-piece');
+            if (ghost) {
+                ghost.remove();
+            }
+
+            if (isDragging) {
+                // Considéré comme un glisser-déposer
+                const grid = document.getElementById('grid');
+                const gridRect = grid.getBoundingClientRect();
+                const touchX = touch.clientX;
+                const touchY = touch.clientY;
+
+                if (
+                    touchX >= gridRect.left &&
+                    touchX <= gridRect.right &&
+                    touchY >= gridRect.top &&
+                    touchY <= gridRect.bottom
+                ) {
+                    const col = Math.floor((touchX - gridRect.left) / (CELL_SIZE + 2));
+                    const row = Math.floor((touchY - gridRect.top) / (CELL_SIZE + 2));
+                    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                        placePiece(row, col);
+                    }
+                }
+            }
+            selectedPiece = null;
+            selectedPieceIndex = null;
+        };
         div.addEventListener('touchstart', div.touchStartHandler);
+        div.addEventListener('touchmove', div.touchMoveHandler);
+        div.addEventListener('touchend', div.touchEndHandler);
     });
 
     document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
