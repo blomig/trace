@@ -426,17 +426,23 @@
 }
         
         // Generate 5 random pieces
-     function generatePieces() {
-    pieces = [];
+      function generatePieces() {
     const piecesDiv = document.getElementById('pieces');
     piecesDiv.innerHTML = '';
-    for (let i = 0; i < 5; i++) {
+    const currentPieceCount = pieces.length;
+
+    // Ajouter des pièces jusqu'à avoir 5 pièces
+    for (let i = currentPieceCount; i < 5; i++) {
         const piece = generateRandomPiece();
         pieces.push(piece);
+    }
+
+    // Générer les éléments DOM pour toutes les pièces existantes
+    pieces.forEach((piece, index) => {
         const pieceDiv = document.createElement('div');
         pieceDiv.className = 'piece';
-        pieceDiv.dataset.index = i;
-        pieceDiv.setAttribute('draggable', 'true'); // Activer le drag-and-drop
+        pieceDiv.dataset.index = index; // Utiliser l’index réel dans pieces
+        pieceDiv.setAttribute('draggable', 'true');
         const img = document.createElement('img');
         img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
         img.width = CELL_SIZE;
@@ -446,15 +452,15 @@
         // Mode clic
         pieceDiv.clickHandler = (event) => {
             event.preventDefault();
-            selectPiece(i, event);
+            selectPiece(index, event);
         };
         pieceDiv.addEventListener('click', pieceDiv.clickHandler);
 
         // Mode glisser-déposer (PC)
         pieceDiv.dragStartHandler = (event) => {
-            event.dataTransfer.setData('pieceIndex', i);
-            selectedPiece = pieces[i];
-            selectedPieceIndex = i;
+            event.dataTransfer.setData('pieceIndex', index);
+            selectedPiece = pieces[index];
+            selectedPieceIndex = index;
         };
         pieceDiv.addEventListener('dragstart', pieceDiv.dragStartHandler);
 
@@ -464,11 +470,10 @@
             const touch = event.touches[0];
             pieceDiv.dataset.startX = touch.clientX;
             pieceDiv.dataset.startY = touch.clientY;
-            pieceDiv.dataset.pieceIndex = i;
-            selectedPiece = pieces[i];
-            selectedPieceIndex = i;
+            pieceDiv.dataset.pieceIndex = index;
+            selectedPiece = pieces[index];
+            selectedPieceIndex = index;
 
-            // Créer une image fantôme pour le déplacement visuel
             const ghost = img.cloneNode(true);
             ghost.id = 'ghost-piece';
             ghost.style.position = 'absolute';
@@ -520,7 +525,7 @@
         pieceDiv.addEventListener('touchend', pieceDiv.touchEndHandler);
 
         piecesDiv.appendChild(pieceDiv);
-    }
+    });
 }
 
         // Generate a random piece
@@ -557,7 +562,21 @@
 
         // Place a piece on the grid
         function placePiece(row, col) {
-    if (gameOver || !selectedPiece || grid[row][col]) return;
+    console.log("placePiece called, gameOver:", gameOver);
+    if (gameOver || grid[row][col]) return;
+
+    if (!selectedPiece || selectedPieceIndex === null) {
+        // Si aucune pièce n’est sélectionnée (peut arriver en mode glisser-déposer si l’index est incorrect)
+        const pieceDiv = document.querySelector(`.piece[data-index="${selectedPieceIndex}"]`);
+        if (pieceDiv) {
+            const pieceIndex = parseInt(pieceDiv.dataset.index);
+            selectedPiece = pieces[pieceIndex];
+            selectedPieceIndex = pieceIndex;
+        } else {
+            return;
+        }
+    }
+
     grid[row][col] = { ...selectedPiece };
     const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
     cell.classList.add('occupied');
@@ -567,14 +586,12 @@
     img.height = CELL_SIZE;
     cell.innerHTML = ''; // Supprime le canvas
     cell.appendChild(img);
-    totalPiecesPlayed++; // Incrémente N
-    updateScoreDisplay(); // Ajoute cette ligne        
-    // Ajouter le son
+
     if (areSoundsEnabled) {
-    const placeSound = new Audio('place.mp3');
-    placeSound.volume = 0.7;
-    placeSound.play();
-}
+        const placeSound = new Audio('place.mp3');
+        placeSound.volume = 0.7;
+        placeSound.play();
+    }
 
     // Update pointGrid
     const points = [selectedPiece.point1, selectedPiece.point2];
@@ -592,7 +609,7 @@
     // Remove the piece from the bottom
     const pieceDiv = document.querySelector(`.piece[data-index="${selectedPieceIndex}"]`);
     if (pieceDiv) pieceDiv.remove();
-    
+
     // Remove the piece from pieces and update indices
     pieces.splice(selectedPieceIndex, 1);
     selectedPiece = null;
@@ -603,23 +620,63 @@
     remainingPieceDivs.forEach((div, i) => {
         div.dataset.index = i;
         div.removeEventListener('click', div.clickHandler);
-        div.clickHandler = () => selectPiece(i, event);
+        div.removeEventListener('dragstart', div.dragStartHandler);
+        div.removeEventListener('touchstart', div.touchStartHandler);
+
+        // Mode clic
+        div.clickHandler = (event) => {
+            event.preventDefault();
+            selectPiece(i, event);
+        };
         div.addEventListener('click', div.clickHandler);
+
+        // Mode glisser-déposer (PC)
+        div.dragStartHandler = (event) => {
+            event.dataTransfer.setData('pieceIndex', i);
+            selectedPiece = pieces[i];
+            selectedPieceIndex = i;
+        };
+        div.addEventListener('dragstart', div.dragStartHandler);
+
+        // Mode glisser-déposer (iPhone)
+        div.touchStartHandler = (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            div.dataset.startX = touch.clientX;
+            div.dataset.startY = touch.clientY;
+            div.dataset.pieceIndex = i;
+            selectedPiece = pieces[i];
+            selectedPieceIndex = i;
+
+            const ghost = div.querySelector('img').cloneNode(true);
+            ghost.id = 'ghost-piece';
+            ghost.style.position = 'absolute';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.opacity = '0.7';
+            ghost.style.left = `${touch.clientX - CELL_SIZE / 2}px`;
+            ghost.style.top = `${touch.clientY - CELL_SIZE / 2}px`;
+            document.body.appendChild(ghost);
+        };
+        div.addEventListener('touchstart', div.touchStartHandler);
     });
 
     document.querySelectorAll('.piece').forEach(p => p.style.border = '1px solid #333');
 
-    // Check for closed shape
+    totalPiecesPlayed++; // Incrémente N
+    updateScoreDisplay(); // Met à jour l’affichage
+
+    // Check for closed shape (ancienne méthode)
     const hasClosedShape = checkClosedShape(row, col, points);
 
     // Generate new pieces only if all 5 are used
     if (pieces.length === 0) {
         generatePieces();
     }
-// Vérifie la fin de partie si aucune figure n’a été détectée
-if (!hasClosedShape) {
-    checkGameOver();
-}
+
+    // Vérifie la fin de partie si aucune figure n’a été détectée
+    if (!hasClosedShape) {
+        checkGameOver();
+    }
 }
 
         // Check for closed shapes
@@ -1024,7 +1081,7 @@ function toggleSounds() {
     soundsButton.textContent = areSoundsEnabled ? 'Sons ON' : 'Sons OFF';
 }
 
-       function flushPieces() {
+     function flushPieces() {
     if (flushCount <= 0 || gameOver) return;
 
     flushCount--;
@@ -1036,9 +1093,7 @@ function toggleSounds() {
         flushButton.classList.remove('disabled');
     }
 
-    pieces = [];
-    document.getElementById('pieces').innerHTML = '';
-
+    pieces = []; // Vider les pièces
     generatePieces();
 }
 
