@@ -431,17 +431,15 @@
     piecesDiv.innerHTML = '';
     const currentPieceCount = pieces.length;
 
-    // Ajouter des pièces jusqu'à avoir 5 pièces
     for (let i = currentPieceCount; i < 5; i++) {
         const piece = generateRandomPiece();
         pieces.push(piece);
     }
 
-    // Générer les éléments DOM pour toutes les pièces existantes
     pieces.forEach((piece, index) => {
         const pieceDiv = document.createElement('div');
         pieceDiv.className = 'piece';
-        pieceDiv.dataset.index = index; // Utiliser l’index réel dans pieces
+        pieceDiv.dataset.index = index;
         pieceDiv.setAttribute('draggable', 'true');
         const img = document.createElement('img');
         img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
@@ -464,10 +462,20 @@
         };
         pieceDiv.addEventListener('dragstart', pieceDiv.dragStartHandler);
 
-        // Mode glisser-déposer (iPhone)
+        // Mode glisser-déposer et tap (iPhone)
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
+        const TAP_THRESHOLD = 5; // Seuil de déplacement en pixels pour considérer un glissement
+        const TAP_DURATION = 300; // Durée maximale en ms pour un tap
+
         pieceDiv.touchStartHandler = (event) => {
-            event.preventDefault();
             const touch = event.touches[0];
+            touchStartTime = Date.now();
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isDragging = false;
             pieceDiv.dataset.startX = touch.clientX;
             pieceDiv.dataset.startY = touch.clientY;
             pieceDiv.dataset.pieceIndex = index;
@@ -486,6 +494,12 @@
         pieceDiv.touchMoveHandler = (event) => {
             event.preventDefault();
             const touch = event.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > TAP_THRESHOLD || dy > TAP_THRESHOLD) {
+                isDragging = true;
+            }
+
             const ghost = document.getElementById('ghost-piece');
             if (ghost) {
                 ghost.style.left = `${touch.clientX - CELL_SIZE / 2}px`;
@@ -493,28 +507,37 @@
             }
         };
         pieceDiv.touchEndHandler = (event) => {
-            event.preventDefault();
+            const touchDuration = Date.now() - touchStartTime;
             const ghost = document.getElementById('ghost-piece');
             if (ghost) {
                 ghost.remove();
             }
 
             const touch = event.changedTouches[0];
-            const grid = document.getElementById('grid');
-            const gridRect = grid.getBoundingClientRect();
-            const touchX = touch.clientX;
-            const touchY = touch.clientY;
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
 
-            if (
-                touchX >= gridRect.left &&
-                touchX <= gridRect.right &&
-                touchY >= gridRect.top &&
-                touchY <= gridRect.bottom
-            ) {
-                const col = Math.floor((touchX - gridRect.left) / (CELL_SIZE + 2));
-                const row = Math.floor((touchY - gridRect.top) / (CELL_SIZE + 2));
-                if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-                    placePiece(row, col);
+            if (!isDragging && dx <= TAP_THRESHOLD && dy <= TAP_THRESHOLD && touchDuration <= TAP_DURATION) {
+                // Considéré comme un tap : simuler un clic
+                selectPiece(index, event);
+            } else {
+                // Considéré comme un glisser-déposer
+                const grid = document.getElementById('grid');
+                const gridRect = grid.getBoundingClientRect();
+                const touchX = touch.clientX;
+                const touchY = touch.clientY;
+
+                if (
+                    touchX >= gridRect.left &&
+                    touchX <= gridRect.right &&
+                    touchY >= gridRect.top &&
+                    touchY <= gridRect.bottom
+                ) {
+                    const col = Math.floor((touchX - gridRect.left) / (CELL_SIZE + 2));
+                    const row = Math.floor((touchY - gridRect.top) / (CELL_SIZE + 2));
+                    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                        placePiece(row, col);
+                    }
                 }
             }
             selectedPiece = null;
