@@ -349,23 +349,42 @@
 }
         // Initialize grid
         function initializeGrid() {
-            const gridDiv = document.getElementById('grid');
-            gridDiv.innerHTML = '';
-            for (let i = 0; i < GRID_SIZE; i++) {
-                for (let j = 0; j < GRID_SIZE; j++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.dataset.row = i;
-                    cell.dataset.col = j;
-                    cell.addEventListener('click', () => placePiece(i, j));
-                    const canvas = document.createElement('canvas');
-                    canvas.width = CELL_SIZE;
-                    canvas.height = CELL_SIZE;
-                    cell.appendChild(canvas);
-                    gridDiv.appendChild(cell);
-                }
-            }
+    const gridDiv = document.getElementById('grid');
+    gridDiv.innerHTML = '';
+    for (let i = 0; i < GRID_SIZE; i++) {
+        for (let j = 0; j < GRID_SIZE; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+
+            // Mode clic
+            cell.clickHandler = () => {
+                console.log(`Cell clicked at row ${i}, col ${j}`);
+                placePiece(i, j);
+            };
+            cell.addEventListener('click', cell.clickHandler);
+
+            // Mode glisser-déposer (PC)
+            cell.dragOverHandler = (event) => {
+                event.preventDefault();
+            };
+            cell.dropHandler = (event) => {
+                event.preventDefault();
+                const pieceIndex = event.dataTransfer.getData('pieceIndex');
+                placePiece(i, j);
+            };
+            cell.addEventListener('dragover', cell.dragOverHandler);
+            cell.addEventListener('drop', cell.dropHandler);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = CELL_SIZE;
+            canvas.height = CELL_SIZE;
+            cell.appendChild(canvas);
+            gridDiv.appendChild(cell);
         }
+    }
+}
          // fonction start Game
    function startGame() {
     console.log("startGame called");
@@ -407,7 +426,7 @@
 }
         
         // Generate 5 random pieces
-      function generatePieces() {
+     function generatePieces() {
     pieces = [];
     const piecesDiv = document.getElementById('pieces');
     piecesDiv.innerHTML = '';
@@ -417,13 +436,89 @@
         const pieceDiv = document.createElement('div');
         pieceDiv.className = 'piece';
         pieceDiv.dataset.index = i;
+        pieceDiv.setAttribute('draggable', 'true'); // Activer le drag-and-drop
         const img = document.createElement('img');
         img.src = `images/piece_${piece.point1.label}_${piece.point2.label}.png`;
         img.width = CELL_SIZE;
         img.height = CELL_SIZE;
         pieceDiv.appendChild(img);
-        pieceDiv.clickHandler = (event) => selectPiece(i, event);
+
+        // Mode clic
+        pieceDiv.clickHandler = (event) => {
+            event.preventDefault();
+            selectPiece(i, event);
+        };
         pieceDiv.addEventListener('click', pieceDiv.clickHandler);
+
+        // Mode glisser-déposer (PC)
+        pieceDiv.dragStartHandler = (event) => {
+            event.dataTransfer.setData('pieceIndex', i);
+            selectedPiece = pieces[i];
+            selectedPieceIndex = i;
+        };
+        pieceDiv.addEventListener('dragstart', pieceDiv.dragStartHandler);
+
+        // Mode glisser-déposer (iPhone)
+        pieceDiv.touchStartHandler = (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            pieceDiv.dataset.startX = touch.clientX;
+            pieceDiv.dataset.startY = touch.clientY;
+            pieceDiv.dataset.pieceIndex = i;
+            selectedPiece = pieces[i];
+            selectedPieceIndex = i;
+
+            // Créer une image fantôme pour le déplacement visuel
+            const ghost = img.cloneNode(true);
+            ghost.id = 'ghost-piece';
+            ghost.style.position = 'absolute';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.opacity = '0.7';
+            ghost.style.left = `${touch.clientX - CELL_SIZE / 2}px`;
+            ghost.style.top = `${touch.clientY - CELL_SIZE / 2}px`;
+            document.body.appendChild(ghost);
+        };
+        pieceDiv.touchMoveHandler = (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const ghost = document.getElementById('ghost-piece');
+            if (ghost) {
+                ghost.style.left = `${touch.clientX - CELL_SIZE / 2}px`;
+                ghost.style.top = `${touch.clientY - CELL_SIZE / 2}px`;
+            }
+        };
+        pieceDiv.touchEndHandler = (event) => {
+            event.preventDefault();
+            const ghost = document.getElementById('ghost-piece');
+            if (ghost) {
+                ghost.remove();
+            }
+
+            const touch = event.changedTouches[0];
+            const grid = document.getElementById('grid');
+            const gridRect = grid.getBoundingClientRect();
+            const touchX = touch.clientX;
+            const touchY = touch.clientY;
+
+            if (
+                touchX >= gridRect.left &&
+                touchX <= gridRect.right &&
+                touchY >= gridRect.top &&
+                touchY <= gridRect.bottom
+            ) {
+                const col = Math.floor((touchX - gridRect.left) / (CELL_SIZE + 2));
+                const row = Math.floor((touchY - gridRect.top) / (CELL_SIZE + 2));
+                if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                    placePiece(row, col);
+                }
+            }
+            selectedPiece = null;
+            selectedPieceIndex = null;
+        };
+        pieceDiv.addEventListener('touchstart', pieceDiv.touchStartHandler);
+        pieceDiv.addEventListener('touchmove', pieceDiv.touchMoveHandler);
+        pieceDiv.addEventListener('touchend', pieceDiv.touchEndHandler);
+
         piecesDiv.appendChild(pieceDiv);
     }
 }
