@@ -426,7 +426,7 @@
 }
         
         // Generate 5 random pieces
-      function generatePieces() {
+     function generatePieces() {
     const piecesDiv = document.getElementById('pieces');
     piecesDiv.innerHTML = '';
     const currentPieceCount = pieces.length;
@@ -471,6 +471,7 @@
         const TAP_DURATION = 300; // Durée maximale en ms pour un tap
 
         pieceDiv.touchStartHandler = (event) => {
+            // Ne pas appeler event.preventDefault() ici pour permettre les clicks
             const touch = event.touches[0];
             touchStartTime = Date.now();
             touchStartX = touch.clientX;
@@ -482,6 +483,12 @@
             selectedPiece = pieces[index];
             selectedPieceIndex = index;
 
+            // Supprimer toute image fantôme existante
+            const existingGhost = document.getElementById('ghost-piece');
+            if (existingGhost) {
+                existingGhost.remove();
+            }
+
             const ghost = img.cloneNode(true);
             ghost.id = 'ghost-piece';
             ghost.style.position = 'absolute';
@@ -492,7 +499,7 @@
             document.body.appendChild(ghost);
         };
         pieceDiv.touchMoveHandler = (event) => {
-            event.preventDefault();
+            event.preventDefault(); // Empêche le défilement pendant le glissement
             const touch = event.touches[0];
             const dx = Math.abs(touch.clientX - touchStartX);
             const dy = Math.abs(touch.clientY - touchStartY);
@@ -508,19 +515,17 @@
         };
         pieceDiv.touchEndHandler = (event) => {
             const touchDuration = Date.now() - touchStartTime;
+            const touch = event.changedTouches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+
+            // Supprimer l’image fantôme
             const ghost = document.getElementById('ghost-piece');
             if (ghost) {
                 ghost.remove();
             }
 
-            const touch = event.changedTouches[0];
-            const dx = Math.abs(touch.clientX - touchStartX);
-            const dy = Math.abs(touch.clientY - touchStartY);
-
-            if (!isDragging && dx <= TAP_THRESHOLD && dy <= TAP_THRESHOLD && touchDuration <= TAP_DURATION) {
-                // Considéré comme un tap : simuler un clic
-                selectPiece(index, event);
-            } else {
+            if (isDragging) {
                 // Considéré comme un glisser-déposer
                 const grid = document.getElementById('grid');
                 const gridRect = grid.getBoundingClientRect();
